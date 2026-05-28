@@ -142,7 +142,11 @@ export default async function DashboardPage() {
   // Generate alerts in background
   generateSmartAlerts().catch(() => {});
 
-  const data = await getDashboardData(userId);
+  let data: any;
+  try { data = await getDashboardData(userId); } catch(e) {
+    console.error("Dashboard error:", e);
+    data = { totalClients:0, activeLeads:0, pendingTasks:0, overdueTasks:0, recentInteractions:[], leadsByStage:[], tasksDueToday:[], totalAum:0, insights:[] };
+  }
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";

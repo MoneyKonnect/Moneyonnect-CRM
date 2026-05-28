@@ -4,7 +4,7 @@
 
 import { NextResponse } from "next/server";
 import { db as prisma } from "@/lib/db";
-import { getGoogleAuth, getSheetsClient } from "@/lib/google";
+import { getGoogleAuth, sheetsRequest } from "@/lib/google";
 
 const SHEET_ID = process.env.GOOGLE_SHEET_ID!;
 const SHEET_NAME = "Leads";

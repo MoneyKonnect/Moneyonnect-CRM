@@ -70,7 +70,7 @@ export async function GET(req: Request) {
       lead.source ?? "",
       lead.interest ?? "",
       lead.residencyType ?? "",
-      lead.value ? String(lead.value) : "",
+      (lead as any).estimatedValue ? String((lead as any).estimatedValue) : "",
       lead.owner?.name ?? lead.owner?.email ?? "",
       lead.nextFollowUpAt
         ? new Date(lead.nextFollowUpAt).toLocaleDateString("en-IN")

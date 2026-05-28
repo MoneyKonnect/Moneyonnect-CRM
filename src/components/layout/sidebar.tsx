@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, TrendingUp, CheckSquare, Megaphone,
   FileText, BarChart3, Building2, Zap, Sparkles, Bell, Settings,
   ChevronLeft, ChevronRight, Cake, IndianRupee, Shield,
-  ChevronDown, Kanban,
+  ChevronDown, Kanban, Globe,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 

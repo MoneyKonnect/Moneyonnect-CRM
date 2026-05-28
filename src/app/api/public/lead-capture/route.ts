@@ -54,7 +54,7 @@ async function writeLeadToSheets(lead: any, ownerName: string) {
     ];
 
     await sheetsRequest(auth, "POST",
-      `${BASE}/${SHEET_ID}/values/${SHEET_NAME}!A:N:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+      `${BASE}/${SHEET_ID}/values/${SHEET_NAME}!A2:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
       { values: [row] }
     );
 

@@ -1,0 +1,837 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Auth ──────────────────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  role          UserRole  @default(ADVISOR)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  clients       Client[]
+  leads         Lead[]
+  tasks         Task[]
+  notes         Note[]
+  interactions  Interaction[]
+  campaigns     Campaign[]
+  auditLogs     AuditLog[]
+  memberSuggestions MemberSuggestion[]
+  smartAlerts     SmartAlert[]  @relation("UserSmartAlerts")
+  webinarsCreated Webinar[]  @relation("WebinarCreator")
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ─── Enums ─────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  ADVISOR
+  VIEWER
+}
+
+enum ClientStatus {
+  ACTIVE
+  INACTIVE
+  PROSPECT
+  DORMANT
+}
+
+enum ClientCategory {
+  PREMIUM
+  STANDARD
+  HNI
+  ULTRA_HNI
+  RETAIL
+}
+
+enum ClientType {
+  INDIVIDUAL
+  HUF
+  COMPANY
+  TRUST
+}
+
+enum RiskAppetite {
+  CONSERVATIVE
+  MODERATE
+  AGGRESSIVE
+  VERY_AGGRESSIVE
+}
+
+enum ResidencyType {
+  RESIDENT_INDIAN
+  NRI
+  OCI
+  PIO
+  FOREIGN_NATIONAL
+  RETURNING_NRI
+}
+
+enum VisaType {
+  H1B
+  L1
+  GREEN_CARD
+  CITIZEN
+  WORK_PERMIT
+  STUDENT
+  OTHER
+}
+
+enum AccountType {
+  NRO
+  NRE
+  FCNR
+  BOTH
+  ALL_THREE
+}
+
+enum LeadStage {
+  NEW
+  CONTACTED
+  MEETING_SCHEDULED
+  INTERESTED
+  DOCUMENTATION_PENDING
+  PAYMENT_PENDING
+  CONVERTED
+  DORMANT
+  LOST
+}
+
+enum LeadSource {
+  REFERRAL
+  SOCIAL_MEDIA
+  WEBSITE
+  COLD_CALL
+  EVENT
+  ADVERTISEMENT
+  EXISTING_CLIENT
+  OTHER
+}
+
+enum TaskType {
+  CALL
+  MEETING
+  FOLLOW_UP
+  BIRTHDAY
+  ANNIVERSARY
+  KYC_RENEWAL
+  INVESTMENT_MATURITY
+  DOCUMENT_EXPIRY
+  CUSTOM
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  OVERDUE
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum InteractionChannel {
+  PHONE
+  EMAIL
+  WHATSAPP
+  IN_PERSON
+  VIDEO_CALL
+  SMS
+}
+
+enum InteractionDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum RelationshipType {
+  SPOUSE
+  CHILD
+  PARENT
+  SIBLING
+  GRANDPARENT
+  GRANDCHILD
+  DAUGHTER_IN_LAW
+  SON_IN_LAW
+  MOTHER_IN_LAW
+  FATHER_IN_LAW
+  UNCLE
+  AUNT
+  NEPHEW
+  NIECE
+  COUSIN
+  OTHER
+}
+
+enum LifeStage {
+  INFANT
+  STUDENT
+  EARLY_CAREER
+  MID_CAREER
+  FAMILY_BUILDER
+  NEAR_RETIREMENT
+  RETIRED
+}
+
+enum DependencyType {
+  DEPENDENT
+  INDEPENDENT
+  SUPPORTER
+}
+
+enum FamilyGroupType {
+  REGULAR
+  HUF
+}
+
+enum InvestmentType {
+  MUTUAL_FUND
+  STOCKS
+  BONDS
+  FD
+  NPS
+  PPF
+  REAL_ESTATE
+  INSURANCE
+  PMS
+  AIF
+  ULIP
+  ELSS
+  SCSS
+  OTHER
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENT
+  CANCELLED
+}
+
+enum CampaignChannel {
+  WHATSAPP
+  EMAIL
+  SMS
+}
+
+enum SuggestionStatus {
+  NEW
+  DISCUSSED
+  IN_PROGRESS
+  COMPLETED
+  NOT_INTERESTED
+}
+
+enum GoalType {
+  EDUCATION
+  RETIREMENT
+  HOME
+  EMERGENCY
+  MARRIAGE
+  BUSINESS
+  TRAVEL
+  OTHER
+}
+
+enum GoalStatus {
+  ACTIVE
+  ACHIEVED
+  PAUSED
+  CANCELLED
+}
+
+enum DocumentFor {
+  CLIENT
+  FAMILY_MEMBER
+}
+
+// ─── Client ────────────────────────────────────────────────────────────────
+
+model Client {
+  id             String         @id @default(cuid())
+  ownerId        String
+  clientType     ClientType     @default(INDIVIDUAL)
+  fullName       String
+  phone          String?
+  email          String?
+  dob            DateTime?
+  pan            String?
+  aadhaarHash    String?
+  occupation     String?
+  incomeBracket  String?
+  riskAppetite   RiskAppetite?
+  address        String?
+  city           String?
+  state          String?
+  pincode        String?
+  category       ClientCategory @default(STANDARD)
+  status         ClientStatus   @default(ACTIVE)
+  avatarUrl      String?
+  referredById   String?
+  aum            Decimal?       @db.Decimal(18, 2)
+
+  // HUF specific fields
+  hufPan         String?
+  hufKartaName   String?
+  hufBankDetails String?
+
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  deletedAt      DateTime?
+
+  owner          User              @relation(fields: [ownerId], references: [id])
+  referredBy     Client?           @relation("Referrals", fields: [referredById], references: [id])
+  referrals      Client[]          @relation("Referrals")
+  residency      ResidencyDetail?
+  documents      Document[]
+  interactions   Interaction[]
+  notes          Note[]
+  tasks          Task[]
+  investments    Investment[]
+  tags           TagsOnClients[]
+  leads          Lead[]            @relation("ConvertedClient")
+  campaignRcpts  CampaignRecipient[]
+  goals          FinancialGoal[]
+  onboarding     OnboardingChecklist[]
+  riskProfile    RiskProfileAnswer?
+
+  // Family relations
+  familyGroupsAsHead FamilyGroup[]   @relation("FamilyHead")
+  familyMemberProfile FamilyMember? @relation("LinkedClient")
+
+  @@index([ownerId])
+  @@index([status])
+  @@index([category])
+  @@map("clients")
+}
+
+// ─── Family ────────────────────────────────────────────────────────────────
+
+model FamilyGroup {
+  id              String          @id @default(cuid())
+  name            String
+  groupType       FamilyGroupType @default(REGULAR)
+  headClientId    String?
+  ownerId         String
+
+  // HUF specific
+  kartaName       String?
+  hufPan          String?
+  hufBankDetails  String?
+  hufFormationDate DateTime?
+
+  notes           String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  deletedAt       DateTime?
+
+  headClient      Client?         @relation("FamilyHead", fields: [headClientId], references: [id])
+  members         FamilyMember[]
+
+  @@index([ownerId])
+  @@map("family_groups")
+}
+
+model FamilyMember {
+  id                  String          @id @default(cuid())
+  familyGroupId       String
+  linkedClientId      String?         @unique  // hybrid architecture
+  relationship        RelationshipType
+  fullName            String
+  dob                 DateTime?
+  phone               String?
+  email               String?
+  occupation          String?
+  education           String?
+  lifeStage           LifeStage?
+  dependencyType      DependencyType  @default(INDEPENDENT)
+  isHufCoparcener     Boolean         @default(false)
+  isHeadOfFamily      Boolean         @default(false)
+  communicationConsent Boolean        @default(false)
+  notes               String?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  familyGroup         FamilyGroup     @relation(fields: [familyGroupId], references: [id], onDelete: Cascade)
+  linkedClient        Client?         @relation("LinkedClient", fields: [linkedClientId], references: [id])
+  documents           Document[]
+  interactions        Interaction[]
+  suggestions         MemberSuggestion[]
+
+  @@index([familyGroupId])
+  @@map("family_members")
+}
+
+// ─── Suggestion Engine ─────────────────────────────────────────────────────
+
+model SuggestionTemplate {
+  id                  String        @id @default(cuid())
+  productName         String
+  description         String        @db.Text
+  category            String        // TAX | INSURANCE | INVESTMENT | COMPLIANCE | ESTATE
+  priority            Int           @default(1) // 1=high, 2=medium, 3=low
+
+  // Applicability rules
+  lifeStages          LifeStage[]
+  residencyTypes      ResidencyType[]
+  countryRules        String[]      // e.g. ["US", "UAE", "UK"]
+  minAge              Int?
+  maxAge              Int?
+  minAum              Decimal?      @db.Decimal(18, 2)
+  rulesJson           Json?         // extra configurable rules
+
+  isActive            Boolean       @default(true)
+  isNriSpecific       Boolean       @default(false)
+  isHufSpecific       Boolean       @default(false)
+
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  memberSuggestions   MemberSuggestion[]
+
+  @@map("suggestion_templates")
+}
+
+model MemberSuggestion {
+  id              String           @id @default(cuid())
+  familyMemberId  String
+  templateId      String?
+  advisorId       String
+
+  status          SuggestionStatus @default(NEW)
+  isCustom        Boolean          @default(false)
+  customTitle     String?
+  customDesc      String?          @db.Text
+  advisorNote     String?          @db.Text
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  actionedAt      DateTime?
+
+  familyMember    FamilyMember     @relation(fields: [familyMemberId], references: [id], onDelete: Cascade)
+  template        SuggestionTemplate? @relation(fields: [templateId], references: [id])
+  advisor         User             @relation(fields: [advisorId], references: [id])
+
+  @@index([familyMemberId])
+  @@map("member_suggestions")
+}
+
+// ─── Residency ─────────────────────────────────────────────────────────────
+
+model ResidencyDetail {
+  id                  String        @id @default(cuid())
+  clientId            String        @unique
+  residencyType       ResidencyType @default(RESIDENT_INDIAN)
+  countryOfResidence  String?
+  citizenship         String?
+  visaType            VisaType?
+  taxResidency        String?
+  timezone            String?
+  accountType         AccountType?
+  fatcaCompliant      Boolean       @default(false)
+  foreignAddress      String?
+  indianAddress       String?
+  passportNumber      String?
+  passportExpiry      DateTime?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  @@map("residency_details")
+}
+
+// ─── Leads ─────────────────────────────────────────────────────────────────
+
+model Lead {
+  id                String     @id @default(cuid())
+  ownerId           String
+  convertedClientId String?
+  fullName          String
+  phone             String?
+  email             String?
+  source            LeadSource @default(OTHER)
+  stage             LeadStage  @default(NEW)
+  score             Int        @default(0)
+  estimatedValue    Decimal?   @db.Decimal(18, 2)
+  notes             String?
+  interest          String?    // service they are interested in
+  otherInterest     String?    // free text when interest = "Other"
+  residencyType     String?    @default("RESIDENT") // RESIDENT | NRI
+  lastActivityAt    DateTime?
+  nextFollowUpAt    DateTime?
+  convertedAt       DateTime?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  deletedAt         DateTime?
+
+  owner           User             @relation(fields: [ownerId], references: [id])
+  convertedClient Client?          @relation("ConvertedClient", fields: [convertedClientId], references: [id])
+  activities      LeadActivity[]
+  tasks           Task[]
+  webinarInvites  WebinarInvite[]
+
+  @@index([ownerId])
+  @@index([stage])
+  @@map("leads")
+}
+
+model LeadActivity {
+  id        String   @id @default(cuid())
+  leadId    String
+  type      String
+  note      String?
+  createdAt DateTime @default(now())
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  @@map("lead_activities")
+}
+
+// ─── Tasks ─────────────────────────────────────────────────────────────────
+
+model Task {
+  id          String       @id @default(cuid())
+  assigneeId  String
+  clientId    String?
+  leadId      String?
+  type        TaskType     @default(CUSTOM)
+  title       String
+  description String?
+  status      TaskStatus   @default(PENDING)
+  priority    TaskPriority @default(MEDIUM)
+  dueAt       DateTime?
+  completedAt DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  assignee User    @relation(fields: [assigneeId], references: [id])
+  client   Client? @relation(fields: [clientId], references: [id])
+  lead     Lead?   @relation(fields: [leadId], references: [id])
+
+  @@index([assigneeId])
+  @@index([status])
+  @@index([dueAt])
+  @@map("tasks")
+}
+
+// ─── Notes ─────────────────────────────────────────────────────────────────
+
+model Note {
+  id        String   @id @default(cuid())
+  authorId  String
+  clientId  String
+  content   String   @db.Text
+  isPinned  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  author User   @relation(fields: [authorId], references: [id])
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@map("notes")
+}
+
+// ─── Interactions ──────────────────────────────────────────────────────────
+
+model Interaction {
+  id             String               @id @default(cuid())
+  userId         String
+  clientId       String
+  familyMemberId String?              // link to specific family member
+  meetingWith    String?              // display text e.g. "Rajesh + Priya"
+  channel        InteractionChannel
+  direction      InteractionDirection @default(OUTBOUND)
+  summary        String               @db.Text
+  occurredAt     DateTime             @default(now())
+  createdAt      DateTime             @default(now())
+
+  user         User          @relation(fields: [userId], references: [id])
+  client       Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  familyMember FamilyMember? @relation(fields: [familyMemberId], references: [id])
+
+  @@index([clientId])
+  @@map("interactions")
+}
+
+// ─── Documents ─────────────────────────────────────────────────────────────
+
+model Document {
+  id             String      @id @default(cuid())
+  clientId       String
+  familyMemberId String?     // optional — for family member docs
+  documentFor    DocumentFor @default(CLIENT)
+  docType        String
+  fileName       String
+  s3Key          String
+  mimeType       String?
+  fileSize       Int?
+  encrypted      Boolean     @default(true)
+  expiresAt      DateTime?
+  createdAt      DateTime    @default(now())
+
+  client       Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  familyMember FamilyMember? @relation(fields: [familyMemberId], references: [id])
+
+  @@index([clientId])
+  @@map("documents")
+}
+
+// ─── Investments ───────────────────────────────────────────────────────────
+
+model Investment {
+  id           String         @id @default(cuid())
+  clientId     String
+  schemeName   String
+  type         InvestmentType
+  amount       Decimal        @db.Decimal(18, 2)
+  currentValue Decimal?       @db.Decimal(18, 2)
+  startDate    DateTime
+  maturityDate DateTime?
+  status       String         @default("ACTIVE")
+  notes        String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  @@index([clientId])
+  @@map("investments")
+}
+
+// ─── Financial Goals ───────────────────────────────────────────────────────
+
+model FinancialGoal {
+  id            String     @id @default(cuid())
+  clientId      String
+  title         String
+  goalType      GoalType   @default(OTHER)
+  targetAmount  Decimal    @db.Decimal(18, 2)
+  currentAmount Decimal    @default(0) @db.Decimal(18, 2)
+  targetDate    DateTime?
+  status        GoalStatus @default(ACTIVE)
+  notes         String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  @@index([clientId])
+  @@map("financial_goals")
+}
+
+// ─── Onboarding ────────────────────────────────────────────────────────────
+
+model OnboardingChecklist {
+  id          String    @id @default(cuid())
+  clientId    String
+  stepName    String
+  stepKey     String
+  completed   Boolean   @default(false)
+  completedAt DateTime?
+  notes       String?
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  @@index([clientId])
+  @@map("onboarding_checklists")
+}
+
+// ─── Tags ──────────────────────────────────────────────────────────────────
+
+model Tag {
+  id        String          @id @default(cuid())
+  name      String          @unique
+  color     String          @default("#6366f1")
+  createdAt DateTime        @default(now())
+  clients   TagsOnClients[]
+  @@map("tags")
+}
+
+model TagsOnClients {
+  clientId  String
+  tagId     String
+  createdAt DateTime @default(now())
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  @@id([clientId, tagId])
+  @@map("tags_on_clients")
+}
+
+// ─── Campaigns ─────────────────────────────────────────────────────────────
+
+model Campaign {
+  id          String          @id @default(cuid())
+  createdById String
+  name        String
+  channel     CampaignChannel
+  status      CampaignStatus  @default(DRAFT)
+  template    String          @db.Text
+  scheduledAt DateTime?
+  sentAt      DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  createdBy  User                @relation(fields: [createdById], references: [id])
+  recipients CampaignRecipient[]
+  @@map("campaigns")
+}
+
+model CampaignRecipient {
+  id              String    @id @default(cuid())
+  campaignId      String
+  clientId        String
+  familyMemberId  String?
+  consentVerified Boolean   @default(false)
+  status          String    @default("PENDING")
+  sentAt          DateTime?
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  client   Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  @@map("campaign_recipients")
+}
+
+// ─── Audit ─────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String
+  action     String   // CREATE | UPDATE | DELETE | STAGE_CHANGE | DOCUMENT_UPLOAD | LOGIN
+  entityType String   // client | lead | task | family_member | document | campaign
+  entityId   String
+  entityName String?  // human readable name for display
+  oldValue   Json?
+  newValue   Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ─── Risk Profile ──────────────────────────────────────────────────────────
+
+model RiskProfileAnswer {
+  id         String   @id @default(cuid())
+  clientId   String   @unique
+  answers    Json     // stores all Q&A pairs
+  score      Int      @default(0)
+  riskResult String?  // computed result
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("risk_profile_answers")
+}
+
+// ─── Alerts ────────────────────────────────────────────────────────────────
+
+model SmartAlert {
+  id         String   @id @default(cuid())
+  ownerId    String
+  clientId   String?
+  memberId   String?
+  alertType  String   // BIRTHDAY | ANNIVERSARY | AGE_18 | KYC_EXPIRY | INVESTMENT_MATURITY | LIFE_STAGE_CHANGE
+  title      String
+  body       String
+  dueDate    DateTime?
+  isRead     Boolean  @default(false)
+  isActioned Boolean  @default(false)
+  isDeleted  Boolean  @default(false)
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  owner   User     @relation("UserSmartAlerts", fields: [ownerId], references: [id])
+
+  @@index([ownerId, isRead])
+  @@index([dueDate])
+  @@map("smart_alerts")
+}
+
+model Webinar {
+  id          String   @id @default(cuid())
+  title       String
+  scheduledAt DateTime
+  platform    String   // GOOGLE_MEET | ZOOM | OTHER
+  meetingLink String?
+  description String?
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy User           @relation("WebinarCreator", fields: [createdById], references: [id])
+  invites   WebinarInvite[]
+
+  @@map("webinars")
+}
+
+model WebinarInvite {
+  id        String   @id @default(cuid())
+  webinarId String
+  leadId    String
+  sentAt    DateTime?
+  status    String   @default("PENDING") // PENDING | SENT | OPENED | REGISTERED
+
+  webinar Webinar @relation(fields: [webinarId], references: [id], onDelete: Cascade)
+  lead    Lead    @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@unique([webinarId, leadId])
+  @@map("webinar_invites")
+}

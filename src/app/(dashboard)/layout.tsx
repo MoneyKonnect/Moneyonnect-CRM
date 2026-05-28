@@ -1,0 +1,40 @@
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { Sidebar } from "@/components/layout/sidebar";
+import { Topbar } from "@/components/layout/topbar";
+import { CommandPalette } from "@/components/ui/command-palette";
+
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
+  const userId = (session.user as any).id ?? "";
+
+  // Fetch real counts for sidebar badges
+  const [unreadAlerts, activeLeads, pendingTasks, totalClients] = await Promise.all([
+    db.smartAlert.count({ where: { ownerId: userId, isRead: false } }).catch(() => 0),
+    db.lead.count({ where: { ownerId: userId, deletedAt: null, stage: { notIn: ["CONVERTED","LOST"] } } }).catch(() => 0),
+    db.task.count({ where: { assigneeId: userId, status: { in: ["PENDING","IN_PROGRESS"] } } }).catch(() => 0),
+    db.client.count({ where: { ownerId: userId, deletedAt: null } }).catch(() => 0),
+  ]);
+
+  const counts = {
+    clients: totalClients,
+    leads: activeLeads,
+    tasks: pendingTasks,
+    notifications: unreadAlerts,
+  };
+
+  return (
+    <div className="flex h-screen bg-background overflow-hidden">
+      <Sidebar counts={counts} />
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+        <Topbar user={session.user} unreadAlerts={unreadAlerts} />
+        <main className="flex-1 overflow-y-auto">
+          {children}
+        </main>
+      </div>
+      <CommandPalette />
+    </div>
+  );
+}

@@ -1,0 +1,34 @@
+{
+  "buildCommand": "npm run vercel-build",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "headers": [
+    {
+      "source": "/api/public/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "https://www.moneykonnect.in"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type"
+        }
+      ]
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/sync/leads-to-sheets",
+      "schedule": "0 19 * * *"
+    },
+    {
+      "path": "/api/backup/drive",
+      "schedule": "30 18 * * *"
+    }
+  ]
+}

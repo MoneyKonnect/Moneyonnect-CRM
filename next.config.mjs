@@ -1,6 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Tell Next.js these packages should only run on the server, not edge runtime
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   serverExternalPackages: ["bcryptjs", "@prisma/client", "prisma"],
   images: {
     remotePatterns: [

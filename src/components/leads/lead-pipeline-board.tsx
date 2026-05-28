@@ -49,6 +49,8 @@ export function LeadPipelineBoard({ grouped }: LeadPipelineBoardProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activeLead, setActiveLead] = useState<any | null>(null);
 
+  const allLeads = Object.values(localGrouped).flat();
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 8 },

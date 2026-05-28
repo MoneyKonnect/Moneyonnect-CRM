@@ -18,7 +18,7 @@ export async function createClient(data: ClientInput) {
     const parsed = clientSchema.safeParse(data);
     if (!parsed.success) return { success: false, error: parsed.error.errors[0]?.message || "Invalid data" };
     const { aum, dob, ...rest } = parsed.data;
-    const client = await db.client.create({
+    const client = await (db.client.create as any)({
       data: {
         ...rest,
         ownerId: session.user.id,
@@ -58,7 +58,7 @@ export async function updateClient(clientId: string, data: ClientInput) {
     const parsed = clientSchema.safeParse(data);
     if (!parsed.success) return { success: false, error: parsed.error.errors[0]?.message || "Invalid data" };
     const { aum, dob, ...rest } = parsed.data;
-    const client = await db.client.update({
+    const client = await (db.client.update as any)({
       where: { id: clientId },
       data: {
         ...rest,
@@ -84,7 +84,7 @@ export async function deleteClient(clientId: string) {
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const existing = await db.client.findFirst({ where: { id: clientId, ownerId: session.user.id, deletedAt: null } });
     if (!existing) return { success: false, error: "Client not found" };
-    await db.client.update({ where: { id: clientId }, data: { deletedAt: new Date() } });
+    await (db.client.update as any)({ where: { id: clientId }, data: { deletedAt: new Date() } });
     await logAudit(session.user.id, "DELETE", "client", clientId, existing.fullName, existing, null);
     revalidatePath("/clients");
     return { success: true };
@@ -141,7 +141,7 @@ export async function convertLeadToClient(leadId: string) {
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const lead = await db.lead.findFirst({ where: { id: leadId, ownerId: session.user.id, deletedAt: null } });
     if (!lead) return { success: false, error: "Lead not found" };
-    const client = await db.client.create({
+    const client = await (db.client.create as any)({
       data: {
         ownerId: session.user.id,
         fullName: lead.fullName,

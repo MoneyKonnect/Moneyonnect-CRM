@@ -120,8 +120,8 @@ export async function POST(req: NextRequest) {
       },
     }).catch(() => {});
 
-    // Write to Google Sheets IMMEDIATELY (non-blocking but happens right away)
-    writeLeadToSheets(lead, advisor.name || advisor.email || "Advisor");
+    // Write to Google Sheets BEFORE returning
+    await writeLeadToSheets(lead, advisor.name || advisor.email || "Advisor");
 
     return cors(NextResponse.json({ success: true, leadId: lead.id }));
   } catch (error) {

@@ -35,7 +35,7 @@ export function Sidebar({ counts = {} }: SidebarProps) {
 
     if (item.external) {
       return (
-        
+        <a
           href={item.href}
           target="_blank"
           rel="noopener noreferrer"
@@ -95,7 +95,7 @@ export function Sidebar({ counts = {} }: SidebarProps) {
   const TrelloSection = () => {
     if (collapsed) {
       return (
-        
+        <a
           href="https://trello.com/b/KdtxcW8A/moneykonnect-operations-board"
           target="_blank"
           rel="noopener noreferrer"
@@ -123,7 +123,7 @@ export function Sidebar({ counts = {} }: SidebarProps) {
         </button>
         {trelloOpen && (
           <div className="ml-4 mt-0.5 space-y-0.5 border-l border-border pl-3">
-            
+            <a
               href="https://trello.com/b/KdtxcW8A/moneykonnect-operations-board"
               target="_blank"
               rel="noopener noreferrer"
@@ -142,7 +142,6 @@ export function Sidebar({ counts = {} }: SidebarProps) {
       "flex flex-col border-r border-border bg-card transition-all duration-200 flex-shrink-0",
       collapsed ? "w-14" : "w-[185px]"
     )}>
-      {/* Logo */}
       <div className={cn("flex items-center gap-2.5 px-4 py-4 border-b border-border flex-shrink-0", collapsed && "justify-center px-2")}>
         <div className="w-7 h-7 rounded-xl bg-brand-500 flex items-center justify-center flex-shrink-0">
           <Shield className="h-4 w-4 text-white" />
@@ -154,13 +153,11 @@ export function Sidebar({ counts = {} }: SidebarProps) {
         )}
       </div>
 
-      {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
         <NavItem item={{ href: "/dashboard", label: "Dashboard", icon: LayoutDashboard }} />
         <NavItem item={{ href: "/clients", label: "Clients", icon: Users, countKey: "clients" }} />
         <NavItem item={{ href: "/leads", label: "Leads", icon: TrendingUp, countKey: "leads" }} />
         <NavItem item={{ href: "/meeting-setup", label: "Meeting Set-Up", icon: Calendar }} />
-
         <NavItem item={{ href: "/tasks", label: "Tasks", icon: CheckSquare, countKey: "tasks" }} />
         <NavItem item={{ href: "/campaigns", label: "Campaigns", icon: Megaphone }} />
         <NavItem item={{ href: "/analytics", label: "Analytics", icon: BarChart3 }} />
@@ -181,7 +178,6 @@ export function Sidebar({ counts = {} }: SidebarProps) {
         <TrelloSection />
       </nav>
 
-      {/* Settings + collapse */}
       <div className="border-t border-border p-2 space-y-0.5">
         <NavItem item={{ href: "/settings", label: "Settings", icon: Settings }} />
         <button

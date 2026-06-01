@@ -157,6 +157,7 @@ export function Sidebar({ counts = {} }: SidebarProps) {
         <NavItem item={{ href: "/dashboard", label: "Dashboard", icon: LayoutDashboard }} />
         <NavItem item={{ href: "/clients", label: "Clients", icon: Users, countKey: "clients" }} />
         <NavItem item={{ href: "/leads", label: "Leads", icon: TrendingUp, countKey: "leads" }} />
+        <TrelloSection />
         <NavItem item={{ href: "/meeting-setup", label: "Meeting Set-Up", icon: Calendar }} />
         <NavItem item={{ href: "/tasks", label: "Tasks", icon: CheckSquare, countKey: "tasks" }} />
         <NavItem item={{ href: "/campaigns", label: "Campaigns", icon: Megaphone }} />
@@ -175,7 +176,6 @@ export function Sidebar({ counts = {} }: SidebarProps) {
 
         <NavItem item={{ href: "/organization", label: "Organization", icon: Building2 }} />
         <NavItem item={{ href: "/automations", label: "Automations", icon: Zap }} />
-        <TrelloSection />
       </nav>
 
       <div className="border-t border-border p-2 space-y-0.5">

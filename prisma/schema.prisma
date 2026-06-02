@@ -5,7 +5,6 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
 }
 
 // ─── Auth ──────────────────────────────────────────────────────────────────
@@ -23,7 +22,6 @@ model User {
 
   accounts      Account[]
   sessions      Session[]
-  invitesSent   TeamInvite[]  @relation("InvitedBy")
   clients       Client[]
   leads         Lead[]
   tasks         Task[]
@@ -34,6 +32,7 @@ model User {
   memberSuggestions MemberSuggestion[]
   smartAlerts     SmartAlert[]  @relation("UserSmartAlerts")
   webinarsCreated Webinar[]  @relation("WebinarCreator")
+  sentInvites     TeamInvite[] @relation("SentInvites")
 
   @@map("users")
 }
@@ -838,17 +837,21 @@ model WebinarInvite {
   @@map("webinar_invites")
 }
 
+// ─── Team Invites ──────────────────────────────────────────────────────────
+
 model TeamInvite {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   email       String
-  role        UserRole  @default(ADMIN)
-  token       String    @unique @default(cuid())
-  expiresAt   DateTime
-  used        Boolean   @default(false)
+  role        String   @default("ADMIN")
+  token       String   @unique @default(cuid())
   invitedById String
-  createdAt   DateTime  @default(now())
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdAt   DateTime @default(now())
 
-  invitedBy   User      @relation("InvitedBy", fields: [invitedById], references: [id], onDelete: Cascade)
+  invitedBy User @relation("SentInvites", fields: [invitedById], references: [id])
 
+  @@index([token])
+  @@index([email])
   @@map("team_invites")
 }

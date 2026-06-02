@@ -17,7 +17,7 @@ export async function GET() {
         orderBy: { createdAt: "asc" },
       }),
       db.teamInvite.findMany({
-        where: { used: false, expiresAt: { gt: new Date() } },
+        where: { usedAt: null, expiresAt: { gt: new Date() } },
         select: { id: true, email: true, role: true, createdAt: true, expiresAt: true },
         orderBy: { createdAt: "desc" },
       }),

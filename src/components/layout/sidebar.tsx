@@ -4,10 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard, Users, TrendingUp, CheckSquare, Megaphone,
+  LayoutDashboard, Users, TrendingUp, Megaphone,
   BarChart3, Building2, Zap, Sparkles, Bell, Settings,
   ChevronLeft, ChevronRight, Cake, IndianRupee, Shield,
-  ChevronDown, Calendar, ExternalLink,
+  ChevronDown, Kanban, CalendarClock, Globe,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -15,7 +15,6 @@ interface SidebarProps {
   counts?: {
     clients?: number;
     leads?: number;
-    tasks?: number;
     notifications?: number;
   };
 }
@@ -23,7 +22,9 @@ interface SidebarProps {
 export function Sidebar({ counts = {} }: SidebarProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
-  const [trelloOpen, setTrelloOpen] = useState(false);
+  const [pipelineOpen, setPipelineOpen] = useState(
+    pathname.startsWith("/leads") || pathname.startsWith("/operations") || pathname.startsWith("/webinars")
+  );
 
   const isActive = (href: string) =>
     pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
@@ -32,30 +33,6 @@ export function Sidebar({ counts = {} }: SidebarProps) {
     const Icon = item.icon;
     const active = isActive(item.href);
     const count = item.countKey ? counts[item.countKey as keyof typeof counts] : undefined;
-
-    if (item.external) {
-      return (
-        <a
-          href={item.href}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={cn(
-            "flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all group relative",
-            "text-muted-foreground hover:text-foreground hover:bg-accent",
-            collapsed && "justify-center px-2"
-          )}
-          title={collapsed ? item.label : undefined}
-        >
-          <Icon className="h-4 w-4 flex-shrink-0 text-muted-foreground group-hover:text-foreground" />
-          {!collapsed && (
-            <>
-              <span className="flex-1 truncate">{item.label}</span>
-              <ExternalLink className="h-3 w-3 opacity-40" />
-            </>
-          )}
-        </a>
-      );
-    }
 
     return (
       <Link
@@ -74,7 +51,7 @@ export function Sidebar({ counts = {} }: SidebarProps) {
             <span className="flex-1 truncate">{item.label}</span>
             {count !== undefined && count > 0 && (
               <span className={cn("text-2xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center",
-                item.countKey === "notifications" || item.countKey === "tasks"
+                item.countKey === "notifications"
                   ? "bg-danger/15 text-danger"
                   : "bg-brand-500/15 text-brand-400"
               )}>
@@ -92,45 +69,57 @@ export function Sidebar({ counts = {} }: SidebarProps) {
     );
   };
 
-  const TrelloSection = () => {
+  const PipelineSection = () => {
+    const isPipelineActive = pathname.startsWith("/leads") || pathname.startsWith("/operations") || pathname.startsWith("/webinars");
     if (collapsed) {
       return (
-        <a
-          href="https://trello.com/b/KdtxcW8A/moneykonnect-operations-board"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center justify-center px-2 py-2 rounded-lg text-sm transition-all text-muted-foreground hover:text-foreground hover:bg-accent"
-          title="Trello"
-        >
-          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M21 0H3C1.343 0 0 1.343 0 3v18c0 1.657 1.343 3 3 3h18c1.657 0 3-1.343 3-3V3c0-1.657-1.343-3-3-3zM10.44 18.18c0 .795-.645 1.44-1.44 1.44H4.56c-.795 0-1.44-.645-1.44-1.44V5.82c0-.795.645-1.44 1.44-1.44H9c.795 0 1.44.645 1.44 1.44v12.36zm10.44-6c0 .795-.645 1.44-1.44 1.44H15c-.795 0-1.44-.645-1.44-1.44V5.82c0-.795.645-1.44 1.44-1.44h4.44c.795 0 1.44.645 1.44 1.44v6.36z"/>
-          </svg>
-        </a>
+        <Link href="/leads" prefetch={false}
+          className={cn("flex items-center justify-center px-2 py-2 rounded-lg text-sm transition-all relative",
+            isPipelineActive ? "bg-brand-500/10 text-brand-400" : "text-muted-foreground hover:text-foreground hover:bg-accent"
+          )}>
+          <TrendingUp className="h-4 w-4" />
+          {(counts.leads ?? 0) > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-brand-500 rounded-full text-white text-2xs font-bold flex items-center justify-center">
+              {counts.leads}
+            </span>
+          )}
+        </Link>
       );
     }
 
     return (
       <div>
         <button
-          onClick={() => setTrelloOpen(!trelloOpen)}
-          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all text-muted-foreground hover:text-foreground hover:bg-accent"
+          onClick={() => setPipelineOpen(!pipelineOpen)}
+          className={cn(
+            "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all",
+            isPipelineActive ? "bg-brand-500/10 text-brand-400 font-medium" : "text-muted-foreground hover:text-foreground hover:bg-accent"
+          )}
         >
-          <svg className="h-4 w-4 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M21 0H3C1.343 0 0 1.343 0 3v18c0 1.657 1.343 3 3 3h18c1.657 0 3-1.343 3-3V3c0-1.657-1.343-3-3-3zM10.44 18.18c0 .795-.645 1.44-1.44 1.44H4.56c-.795 0-1.44-.645-1.44-1.44V5.82c0-.795.645-1.44 1.44-1.44H9c.795 0 1.44.645 1.44 1.44v12.36zm10.44-6c0 .795-.645 1.44-1.44 1.44H15c-.795 0-1.44-.645-1.44-1.44V5.82c0-.795.645-1.44 1.44-1.44h4.44c.795 0 1.44.645 1.44 1.44v6.36z"/>
-          </svg>
-          <span className="flex-1 text-left">Trello</span>
-          <ChevronDown className={cn("h-3.5 w-3.5 flex-shrink-0 transition-transform", trelloOpen && "rotate-180")} />
+          <TrendingUp className={cn("h-4 w-4 flex-shrink-0", isPipelineActive ? "text-brand-400" : "text-muted-foreground")} />
+          <span className="flex-1 text-left">Pipeline</span>
+          {(counts.leads ?? 0) > 0 && (
+            <span className="text-2xs font-bold px-1.5 py-0.5 rounded-full bg-brand-500/15 text-brand-400">
+              {counts.leads}
+            </span>
+          )}
+          <ChevronDown className={cn("h-3.5 w-3.5 flex-shrink-0 transition-transform", pipelineOpen && "rotate-180")} />
         </button>
-        {trelloOpen && (
+
+        {pipelineOpen && (
           <div className="ml-4 mt-0.5 space-y-0.5 border-l border-border pl-3">
-            <a
-              href="https://trello.com/b/KdtxcW8A/moneykonnect-operations-board"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-all text-muted-foreground hover:text-foreground hover:bg-accent"
-            >
-              <ExternalLink className="h-3.5 w-3.5" /> Operations Board
-            </a>
+            <Link href="/leads" prefetch={false}
+              className={cn("flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-all",
+                pathname.startsWith("/leads") ? "text-brand-400 font-medium bg-brand-500/5" : "text-muted-foreground hover:text-foreground hover:bg-accent"
+              )}>
+              <TrendingUp className="h-3.5 w-3.5" /> Leads
+            </Link>
+            <Link href="/operations" prefetch={false}
+              className={cn("flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-all",
+                pathname.startsWith("/operations") ? "text-brand-400 font-medium bg-brand-500/5" : "text-muted-foreground hover:text-foreground hover:bg-accent"
+              )}>
+              <Kanban className="h-3.5 w-3.5" /> Operations Board
+            </Link>
           </div>
         )}
       </div>
@@ -142,6 +131,7 @@ export function Sidebar({ counts = {} }: SidebarProps) {
       "flex flex-col border-r border-border bg-card transition-all duration-200 flex-shrink-0",
       collapsed ? "w-14" : "w-[185px]"
     )}>
+      {/* Logo */}
       <div className={cn("flex items-center gap-2.5 px-4 py-4 border-b border-border flex-shrink-0", collapsed && "justify-center px-2")}>
         <div className="w-7 h-7 rounded-xl bg-brand-500 flex items-center justify-center flex-shrink-0">
           <Shield className="h-4 w-4 text-white" />
@@ -153,31 +143,31 @@ export function Sidebar({ counts = {} }: SidebarProps) {
         )}
       </div>
 
+      {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
-        <NavItem item={{ href: "/dashboard", label: "Dashboard", icon: LayoutDashboard }} />
-        <NavItem item={{ href: "/clients", label: "Clients", icon: Users, countKey: "clients" }} />
-        <NavItem item={{ href: "/leads", label: "Leads", icon: TrendingUp, countKey: "leads" }} />
-        <TrelloSection />
-        <NavItem item={{ href: "/meeting-setup", label: "Meeting Set-Up", icon: Calendar }} />
-        <NavItem item={{ href: "/tasks", label: "Tasks", icon: CheckSquare, countKey: "tasks" }} />
-        <NavItem item={{ href: "/campaigns", label: "Campaigns", icon: Megaphone }} />
-        <NavItem item={{ href: "/analytics", label: "Analytics", icon: BarChart3 }} />
+        <NavItem item={{ href: "/dashboard",     label: "Dashboard",        icon: LayoutDashboard }} />
+        <NavItem item={{ href: "/clients",       label: "Clients",          icon: Users, countKey: "clients" }} />
+        <PipelineSection />
+        <NavItem item={{ href: "/meeting-setup", label: "Meeting Set-Up",   icon: CalendarClock }} />
+        <NavItem item={{ href: "/campaigns",     label: "Campaigns",        icon: Megaphone }} />
+        <NavItem item={{ href: "/analytics",     label: "Analytics",        icon: BarChart3 }} />
 
         {!collapsed && <p className="text-2xs font-semibold text-muted-foreground uppercase tracking-wider px-3 py-1 mt-2">Intelligence</p>}
         {collapsed && <div className="my-2 border-t border-border mx-1" />}
 
-        <NavItem item={{ href: "/ai-insights", label: "AI Insights", icon: Sparkles }} />
-        <NavItem item={{ href: "/notifications", label: "Notifications", icon: Bell, countKey: "notifications" }} />
-        <NavItem item={{ href: "/birthdays", label: "Birthday Calendar", icon: Cake }} />
-        <NavItem item={{ href: "/aum", label: "AUM Dashboard", icon: IndianRupee }} />
+        <NavItem item={{ href: "/ai-insights",   label: "AI Insights",      icon: Sparkles }} />
+        <NavItem item={{ href: "/notifications",  label: "Notifications",    icon: Bell, countKey: "notifications" }} />
+        <NavItem item={{ href: "/birthdays",      label: "Birthday Calendar",icon: Cake }} />
+        <NavItem item={{ href: "/aum",            label: "AUM Dashboard",    icon: IndianRupee }} />
 
         {!collapsed && <p className="text-2xs font-semibold text-muted-foreground uppercase tracking-wider px-3 py-1 mt-2">Workspace</p>}
         {collapsed && <div className="my-2 border-t border-border mx-1" />}
 
-        <NavItem item={{ href: "/organization", label: "Organization", icon: Building2 }} />
-        <NavItem item={{ href: "/automations", label: "Automations", icon: Zap }} />
+        <NavItem item={{ href: "/organization",  label: "Organization",     icon: Building2 }} />
+        <NavItem item={{ href: "/automations",   label: "Automations",      icon: Zap }} />
       </nav>
 
+      {/* Settings + collapse */}
       <div className="border-t border-border p-2 space-y-0.5">
         <NavItem item={{ href: "/settings", label: "Settings", icon: Settings }} />
         <button

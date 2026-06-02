@@ -2,13 +2,23 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Calendar, Users, ExternalLink, Globe } from "lucide-react";
+import { Calendar, Users, ExternalLink, Globe, Copy, Check } from "lucide-react";
 import { MeetingSchedulerModal } from "@/components/leads/meeting-scheduler-modal";
-import { db } from "@/lib/db";
+import { toast } from "sonner";
+
+const CALENDLY_LINK = "https://calendly.com/moneykonnect-info/30min";
 
 export default function MeetingSetupClient({ leads }: { leads: any[] }) {
   const router = useRouter();
   const [webinarOpen, setWebinarOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const copyLink = () => {
+    navigator.clipboard.writeText(CALENDLY_LINK);
+    setCopied(true);
+    toast.success("Link copied!");
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
@@ -32,13 +42,20 @@ export default function MeetingSetupClient({ leads }: { leads: any[] }) {
           <p className="text-sm text-muted-foreground">
             Share your Calendly link with leads so they can book a time that works for them.
           </p>
-          <a href="https://calendly.com/moneykonnect-info/30min" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 w-full justify-center px-4 py-2.5 rounded-lg bg-brand-500 text-white text-sm font-medium hover:bg-brand-600 transition-colors">
+          <a
+            href={CALENDLY_LINK}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 w-full justify-center px-4 py-2.5 rounded-lg bg-brand-500 text-white text-sm font-medium hover:bg-brand-600 transition-colors"
+          >
             <ExternalLink className="h-4 w-4" />
             Open Calendly Booking Page
           </a>
-          <div className="bg-muted/50 rounded-lg p-3">
-            <p className="text-xs text-muted-foreground font-medium mb-1">Your booking link:</p>
-            <p className="text-xs text-brand-400 break-all">https://calendly.com/moneykonnect-info/30min</p>
+          <div className="bg-muted/50 rounded-lg p-3 flex items-center justify-between gap-2">
+            <p className="text-xs text-brand-400 break-all flex-1">{CALENDLY_LINK}</p>
+            <button onClick={copyLink} className="flex-shrink-0 p-1.5 rounded-md hover:bg-accent transition-colors">
+              {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5 text-muted-foreground" />}
+            </button>
           </div>
         </div>
 
@@ -56,12 +73,16 @@ export default function MeetingSetupClient({ leads }: { leads: any[] }) {
           <p className="text-sm text-muted-foreground">
             Create a webinar on Zoom or Google Meet, then blast the link to selected leads via WhatsApp.
           </p>
-          <button onClick={() => setWebinarOpen(true)} className="flex items-center gap-2 w-full justify-center px-4 py-2.5 rounded-lg bg-brand-500 text-white text-sm font-medium hover:bg-brand-600 transition-colors">
+          <button
+            onClick={() => setWebinarOpen(true)}
+            className="flex items-center gap-2 w-full justify-center px-4 py-2.5 rounded-lg bg-brand-500 text-white text-sm font-medium hover:bg-brand-600 transition-colors"
+          >
             <Globe className="h-4 w-4" />
             Schedule Group Webinar
           </button>
           <div className="bg-muted/50 rounded-lg p-3">
             <p className="text-xs text-muted-foreground">Supports: Google Meet, Zoom, Phone Call, In Person</p>
+            <p className="text-xs text-muted-foreground mt-1">{leads.length} active lead{leads.length !== 1 ? "s" : ""} available to invite</p>
           </div>
         </div>
       </div>

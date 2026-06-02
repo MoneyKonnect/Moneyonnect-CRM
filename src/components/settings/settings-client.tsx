@@ -21,6 +21,7 @@ import {
   Shield,
   Sun,
   User,
+  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,7 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { cn, getInitials, generateAvatarColor, formatDate } from "@/lib/utils";
 import { updateProfile, updatePassword } from "@/actions/settings";
+import { TeamTab } from "@/components/settings/team-tab";
 
 const ACTION_COLORS: Record<string, string> = {
   CREATE: "text-emerald-400 bg-emerald-500/10",
@@ -51,6 +53,7 @@ export function SettingsClient({ user, auditLogs }: SettingsClientProps) {
         {[
           { value: "profile", label: "Profile", icon: User },
           { value: "security", label: "Security", icon: Lock },
+          { value: "team", label: "Team", icon: Users },
           { value: "notifications", label: "Notifications", icon: Bell },
           { value: "appearance", label: "Appearance", icon: Palette },
           { value: "audit", label: "Audit Trail", icon: Activity },
@@ -63,6 +66,7 @@ export function SettingsClient({ user, auditLogs }: SettingsClientProps) {
 
       <TabsContent value="profile"><ProfileTab user={user} /></TabsContent>
       <TabsContent value="security"><SecurityTab /></TabsContent>
+      <TabsContent value="team"><TeamTab currentUser={user} /></TabsContent>
       <TabsContent value="notifications"><NotificationsTab /></TabsContent>
       <TabsContent value="appearance"><AppearanceTab /></TabsContent>
       <TabsContent value="audit"><AuditTab logs={auditLogs} /></TabsContent>

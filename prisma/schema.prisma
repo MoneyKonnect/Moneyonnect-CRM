@@ -22,6 +22,7 @@ model User {
 
   accounts      Account[]
   sessions      Session[]
+  invitesSent   TeamInvite[]  @relation("InvitedBy")
   clients       Client[]
   leads         Lead[]
   tasks         Task[]
@@ -834,4 +835,19 @@ model WebinarInvite {
 
   @@unique([webinarId, leadId])
   @@map("webinar_invites")
+}
+
+model TeamInvite {
+  id          String    @id @default(cuid())
+  email       String
+  role        UserRole  @default(ADMIN)
+  token       String    @unique @default(cuid())
+  expiresAt   DateTime
+  used        Boolean   @default(false)
+  invitedById String
+  createdAt   DateTime  @default(now())
+
+  invitedBy   User      @relation("InvitedBy", fields: [invitedById], references: [id], onDelete: Cascade)
+
+  @@map("team_invites")
 }

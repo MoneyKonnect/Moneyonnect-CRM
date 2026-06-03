@@ -12,16 +12,28 @@ interface ClientsPageProps {
     q?: string;
     status?: string;
     category?: string;
+    type?: string; // "new" | "converted" | "existing"
     page?: string;
   }>;
 }
 
+function getClientType(client: any): "new" | "converted" | "existing" {
+  const ninetyDaysAgo = new Date();
+  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+  if (client.sourceLeadId) return "converted";
+  if (new Date(client.createdAt) >= ninetyDaysAgo) return "new";
+  return "existing";
+}
+
 async function getClients(userId: string, params: Awaited<ClientsPageProps["searchParams"]>) {
-  const { q, status, category, page = "1" } = params;
+  const { q, status, category, type, page = "1" } = params;
   const pageSize = 20;
   const skip = (parseInt(page) - 1) * pageSize;
 
-  const where = {
+  const ninetyDaysAgo = new Date();
+  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
+  const baseWhere: any = {
     ownerId: userId,
     deletedAt: null,
     ...(q && {
@@ -37,35 +49,50 @@ async function getClients(userId: string, params: Awaited<ClientsPageProps["sear
     ...(category && { category: category as any }),
   };
 
-  const [clients, total] = await Promise.all([
+  // Type filter
+  if (type === "new") {
+    baseWhere.createdAt = { gte: ninetyDaysAgo };
+    baseWhere.sourceLeadId = null;
+  } else if (type === "converted") {
+    baseWhere.sourceLeadId = { not: null };
+  } else if (type === "existing") {
+    baseWhere.createdAt = { lt: ninetyDaysAgo };
+    baseWhere.sourceLeadId = null;
+  }
+
+  const [clients, total, newCount, convertedCount, existingCount] = await Promise.all([
     db.client.findMany({
-      where,
+      where: baseWhere,
       orderBy: { createdAt: "desc" },
       skip,
       take: pageSize,
       include: {
         tags: { include: { tag: true } },
         residency: { select: { residencyType: true } },
-        _count: {
-          select: { interactions: true, tasks: true, documents: true },
-        },
+        _count: { select: { interactions: true, tasks: true, documents: true } },
       },
     }),
-    db.client.count({ where }),
+    db.client.count({ where: baseWhere }),
+    db.client.count({ where: { ownerId: userId, deletedAt: null, createdAt: { gte: ninetyDaysAgo }, sourceLeadId: null } }),
+    db.client.count({ where: { ownerId: userId, deletedAt: null, sourceLeadId: { not: null } } }),
+    db.client.count({ where: { ownerId: userId, deletedAt: null, createdAt: { lt: ninetyDaysAgo }, sourceLeadId: null } }),
   ]);
 
-  return { clients, total, page: parseInt(page), pageSize };
+  // Tag each client with type
+  const clientsWithType = clients.map(c => ({ ...c, clientType: getClientType(c) }));
+
+  return { clients: clientsWithType, total, page: parseInt(page), pageSize, newCount, convertedCount, existingCount };
 }
 
 export default async function ClientsPage({ searchParams }: ClientsPageProps) {
   const session = await auth();
   const params = await searchParams;
-  const { clients, total, page, pageSize } = await getClients((session?.user as any)?.id ?? "", params);
+  const { clients, total, page, pageSize, newCount, convertedCount, existingCount } = await getClients((session?.user as any)?.id ?? "", params);
 
   return (
     <div className="p-6 space-y-5 max-w-[1400px]">
       <Suspense fallback={null}>
-        <ClientsHeader total={total} />
+        <ClientsHeader total={total} newCount={newCount} convertedCount={convertedCount} existingCount={existingCount} />
       </Suspense>
       <ClientsTable
         clients={clients}

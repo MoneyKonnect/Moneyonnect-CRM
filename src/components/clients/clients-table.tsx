@@ -35,6 +35,12 @@ const STATUS_CONFIG = {
   DORMANT: { label: "Dormant", class: "badge-warning" },
 };
 
+const TYPE_CONFIG = {
+  new:       { label: "New Client",  class: "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30" },
+  converted: { label: "Converted",   class: "bg-brand-500/15 text-brand-400 border border-brand-500/30" },
+  existing:  { label: "Existing",    class: "bg-amber-500/15 text-amber-400 border border-amber-500/30" },
+};
+
 const CATEGORY_CONFIG = {
   RETAIL: { label: "Retail", color: "text-muted-foreground" },
   STANDARD: { label: "Standard", color: "text-blue-400" },
@@ -127,6 +133,7 @@ export function ClientsTable({ clients, total, page, pageSize }: ClientsTablePro
                 const residency = client.residency?.residencyType
                   ? RESIDENCY_CONFIG[client.residency.residencyType as keyof typeof RESIDENCY_CONFIG]
                   : null;
+                const typeCfg = client.clientType ? TYPE_CONFIG[client.clientType as keyof typeof TYPE_CONFIG] : null;
 
                 return (
                   <tr
@@ -148,9 +155,16 @@ export function ClientsTable({ clients, total, page, pageSize }: ClientsTablePro
                           {getInitials(client.fullName)}
                         </div>
                         <div className="min-w-0">
-                          <p className="font-medium text-foreground truncate group-hover:text-brand-400 transition-colors">
-                            {client.fullName}
-                          </p>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="font-medium text-foreground truncate group-hover:text-brand-400 transition-colors">
+                              {client.fullName}
+                            </p>
+                            {typeCfg && (
+                              <span className={cn("text-2xs px-1.5 py-0.5 rounded-full font-medium flex-shrink-0", typeCfg.class)}>
+                                {typeCfg.label}
+                              </span>
+                            )}
+                          </div>
                           {client.city && (
                             <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                               <MapPin className="h-3 w-3" />

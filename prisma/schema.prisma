@@ -325,6 +325,7 @@ model Client {
   status         ClientStatus   @default(ACTIVE)
   avatarUrl      String?
   referredById   String?
+  sourceLeadId   String?
   aum            Decimal?       @db.Decimal(18, 2)
 
   // HUF specific fields

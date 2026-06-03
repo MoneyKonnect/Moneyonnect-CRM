@@ -22,7 +22,7 @@ const getDashboardData = unstable_cache(
     const [
       totalClients, activeLeads, pendingTasks, overdueTasks,
       recentInteractions, leadsByStage, tasksDueToday,
-      totalAum, maturingInvestments, dormantLeads, upcomingBirthdays,
+      totalAum, maturingInvestments, dormantLeads, upcomingBirthdays, convertedThisMonth,
     ] = await Promise.all([
       db.client.count({ where: { ownerId: userId, deletedAt: null } }),
       db.lead.count({ where: { ownerId: userId, deletedAt: null, stage: { notIn: ["CONVERTED", "LOST"] } } }),
@@ -58,6 +58,7 @@ const getDashboardData = unstable_cache(
         take: 3,
         select: { fullName: true },
       }),
+      db.client.count({ where: { ownerId: userId, deletedAt: null, sourceLeadId: { not: null }, createdAt: { gte: new Date(now.getFullYear(), now.getMonth(), 1) } } }),
       db.client.count({
         where: {
           ownerId: userId, deletedAt: null,
@@ -74,12 +75,14 @@ const getDashboardData = unstable_cache(
     if (maturingInvestments > 0) insights.push({ id: "maturity", type: "opportunity", title: `${maturingInvestments} investments maturing in 30 days`, body: "Perfect opportunity to discuss reinvestment options with clients.", action: "View clients", href: "/clients", priority: "high" });
     if (upcomingBirthdays > 0) insights.push({ id: "birthdays", type: "opportunity", title: `${upcomingBirthdays} client birthday${upcomingBirthdays > 1 ? "s" : ""} this month`, body: "Send birthday wishes and schedule a portfolio review call.", action: "View calendar", href: "/birthdays", priority: "medium" });
     if (overdueTasks > 0) insights.push({ id: "overdue", type: "alert", title: `${overdueTasks} overdue task${overdueTasks > 1 ? "s" : ""}`, body: "Clear your backlog to maintain client relationship quality.", action: "View tasks", href: "/tasks", priority: "high" });
+    if (convertedThisMonth > 0) insights.unshift({ id: "converted", type: "opportunity", title: `${convertedThisMonth} lead${convertedThisMonth > 1 ? "s" : ""} converted to client${convertedThisMonth > 1 ? "s" : ""} this month`, body: "Great work! Keep the pipeline moving.", action: "View clients", href: "/clients?type=converted", priority: "high" });
     insights.push({ id: "nri", type: "trend", title: "NRI segment opportunity", body: "Review NRI clients for FATCA compliance and NRE/NRO optimization.", action: "View NRI clients", href: "/clients?residency=NRI", priority: "medium" });
 
     return {
       totalClients, activeLeads, pendingTasks, overdueTasks,
       recentInteractions, leadsByStage, tasksDueToday,
       totalAum: totalAum._sum.aum ? Number(totalAum._sum.aum) : 0,
+      convertedThisMonth,
       insights: insights.slice(0, 3),
     };
   },

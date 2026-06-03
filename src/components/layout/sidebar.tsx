@@ -74,12 +74,11 @@ export function Sidebar({ counts = {} }: SidebarProps) {
   const TrelloSection = () => {
     if (collapsed) {
       return (
-        <a href="https://trello.com/b/KdtxcW8A/moneykonnect-operations-board"
-          target="_blank" rel="noopener noreferrer"
+        <Link href="/trello" prefetch={false}
           className="flex items-center justify-center px-2 py-2 rounded-lg text-sm transition-all text-muted-foreground hover:text-foreground hover:bg-accent"
           title="Trello">
           <TrelloIcon />
-        </a>
+        </Link>
       );
     }
     return (
@@ -94,11 +93,10 @@ export function Sidebar({ counts = {} }: SidebarProps) {
         </button>
         {trelloOpen && (
           <div className="ml-4 mt-0.5 space-y-0.5 border-l border-border pl-3">
-            <a href="https://trello.com/b/KdtxcW8A/moneykonnect-operations-board"
-              target="_blank" rel="noopener noreferrer"
+            <Link href="/trello" prefetch={false}
               className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-all text-muted-foreground hover:text-foreground hover:bg-accent">
               <ExternalLink className="h-3.5 w-3.5" /> Operations Board
-            </a>
+            </Link>
           </div>
         )}
       </div>

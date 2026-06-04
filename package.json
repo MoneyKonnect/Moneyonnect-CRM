@@ -13,7 +13,7 @@
     "db:studio": "prisma studio",
     "db:reset": "prisma migrate reset --force && npm run db:seed",
     "postinstall": "prisma generate",
-    "vercel-build": "prisma generate && next build"
+    "vercel-build": "next build"
   },
   "prisma": {
     "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"

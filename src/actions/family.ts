@@ -54,10 +54,11 @@ export async function deleteFamilyGroup(id: string) {
 }
 
 export async function getFamilyGroupsForClient(clientId: string) {
+  try {
   const session = await auth();
   if (!session?.user?.id) return [];
 
-  return db.familyGroup.findMany({
+  return await db.familyGroup.findMany({
     where: {
       ownerId: session.user.id,
       deletedAt: null,
@@ -77,6 +78,10 @@ export async function getFamilyGroupsForClient(clientId: string) {
       headClient: { select: { id: true, fullName: true } },
     },
   });
+  } catch (error) {
+    console.error("getFamilyGroupsForClient error:", error);
+    return [];
+  }
 }
 
 // ─── Family Members ─────────────────────────────────────────────────────────
@@ -436,7 +441,7 @@ export async function linkExistingClientToFamily(familyGroupId: string, clientId
 
 export async function getFamilyGroupAUM(familyGroupId: string) {
   const members = await db.familyMember.findMany({
-    where: { familyGroupId, deletedAt: null },
+    where: { familyGroupId },
     include: { linkedClient: { select: { aum: true, fullName: true } } },
   });
   const totalAUM = members.reduce((sum, m) => {

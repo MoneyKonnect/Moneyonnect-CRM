@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
 
     // Parse all rows first
     const rows: any[] = [];
-    for (let i = 1; i < Math.min(lines.length, 1001); i++) {
+    for (let i = 1; i < lines.length; i++) {
       const values = lines[i].split(",").map(v => v.replace(/"/g, "").trim());
       const row: any = {};
       headers.forEach((h, idx) => {
@@ -77,15 +77,12 @@ export async function POST(req: NextRequest) {
 
       await Promise.all(batch.map(async (row) => {
         try {
-          // Dedup check
-          if (row.email || row.phone) {
-            const orClause = [];
-            if (row.email) orClause.push({ email: row.email });
-            if (row.phone) orClause.push({ phone: row.phone });
+          // Dedup check by PAN only
+          if (row.pan) {
             const ex = await db.client.findFirst({
-              where: { ownerId: userId, deletedAt: null, OR: orClause },
+              where: { ownerId: userId, deletedAt: null, pan: row.pan.toUpperCase() },
             });
-            if (ex) { skipped.push(`${row.fullName} already exists`); return; }
+            if (ex) { skipped.push(`${row.fullName} already exists (PAN: ${row.pan})`); return; }
           }
 
           const validCats = ["RETAIL","STANDARD","PREMIUM","HNI","ULTRA_HNI"];
@@ -114,8 +111,8 @@ export async function POST(req: NextRequest) {
               occupation: row.occupation || null,
               category,
               status,
-              aum: row.aum ? parseFloat(row.aum.replace(/[^0-9.]/g, "")) : null,
-              createdAt: memberSince || undefined,
+              aum: row.aum && row.aum !== "" ? parseFloat(String(row.aum).replace(/[^0-9.]/g, "")) || null : null,
+              createdAt: memberSince || new Date("2019-01-01"),
               residency: { create: { residencyType } },
             },
           });

@@ -203,7 +203,8 @@ enum InteractionDirection {
 
 enum RelationshipType {
   SPOUSE
-  CHILD
+  SON
+  DAUGHTER
   PARENT
   SIBLING
   GRANDPARENT

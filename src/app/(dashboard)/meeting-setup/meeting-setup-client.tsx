@@ -134,6 +134,7 @@ export default function MeetingSetupClient({ leads }: { leads: any[] }) {
           open={webinarOpen}
           onClose={() => { setWebinarOpen(false); router.refresh(); }}
           defaultMode="webinar"
+          hidePersonalTab={true}
         />
       )}
     </div>

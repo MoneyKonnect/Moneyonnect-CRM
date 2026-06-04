@@ -69,7 +69,7 @@ export async function getFamilyGroupsForClient(clientId: string) {
     include: {
       members: {
         include: {
-          linkedClient: { select: { id: true, fullName: true, status: true } },
+          linkedClient: { select: { id: true, fullName: true, status: true, aum: true, pan: true } },
           suggestions: { orderBy: { createdAt: "desc" }, take: 5 },
         },
         orderBy: { isHeadOfFamily: "desc" },

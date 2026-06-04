@@ -45,7 +45,7 @@ interface MeetingSchedulerModalProps {
   defaultMode?: "personal" | "webinar";
 }
 
-export function MeetingSchedulerModal({ lead, allLeads = [], open, onClose, defaultMode = "personal" }: MeetingSchedulerModalProps) {
+export function MeetingSchedulerModal({ lead, allLeads = [], open, onClose, defaultMode = "personal", hidePersonalTab = false }: MeetingSchedulerModalProps & { hidePersonalTab?: boolean }) {
   const router = useRouter();
   const [mode, setMode] = useState<"personal" | "webinar">(defaultMode);
   const [platform, setPlatform] = useState("GOOGLE_MEET");
@@ -148,7 +148,7 @@ export function MeetingSchedulerModal({ lead, allLeads = [], open, onClose, defa
         {/* Mode toggle */}
         <div className="flex gap-2 p-1 bg-muted rounded-xl">
           {[
-            { id: "personal", label: "1-on-1 Meeting", icon: Users },
+            ...(!hidePersonalTab ? [{ id: "personal", label: "1-on-1 Meeting", icon: Users }] : []),
             { id: "webinar",  label: "Group Webinar",  icon: Globe },
           ].map(m => {
             const Icon = m.icon;

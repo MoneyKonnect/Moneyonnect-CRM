@@ -194,6 +194,22 @@ export function ClientsHeader({ total, newCount, convertedCount, existingCount }
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+              {searchParams.get("ageFilter") === "minor" ? "👶 Minors (under 18)" : searchParams.get("ageFilter") === "senior" ? "👴 Seniors (60+)" : "Age Filter"}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuLabel>Filter by age</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => handleFilterChange("ageFilter", "")} className={!searchParams.get("ageFilter") ? "font-medium text-brand-400" : ""}>All ages</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleFilterChange("ageFilter", "minor")} className={searchParams.get("ageFilter") === "minor" ? "font-medium text-brand-400" : ""}>👶 Minors (under 18)</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleFilterChange("ageFilter", "adult")} className={searchParams.get("ageFilter") === "adult" ? "font-medium text-brand-400" : ""}>👤 Adults (18-59)</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleFilterChange("ageFilter", "senior")} className={searchParams.get("ageFilter") === "senior" ? "font-medium text-brand-400" : ""}>👴 Seniors (60+)</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <ClientFormModal open={addModalOpen} onClose={() => setAddModalOpen(false)} />

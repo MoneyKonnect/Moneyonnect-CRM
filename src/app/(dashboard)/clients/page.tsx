@@ -13,6 +13,7 @@ interface ClientsPageProps {
     status?: string;
     category?: string;
     type?: string; // "new" | "converted" | "existing"
+    ageFilter?: string; // "minor" | "adult" | "senior"
     page?: string;
   }>;
 }
@@ -26,7 +27,7 @@ function getClientType(client: any): "new" | "converted" | "existing" {
 }
 
 async function getClients(userId: string, params: Awaited<ClientsPageProps["searchParams"]>) {
-  const { q, status, category, type, page = "1" } = params;
+  const { q, status, category, type, ageFilter, page = "1" } = params;
   const pageSize = 20;
   const skip = (parseInt(page) - 1) * pageSize;
 
@@ -48,6 +49,23 @@ async function getClients(userId: string, params: Awaited<ClientsPageProps["sear
     ...(status && { status: status as any }),
     ...(category && { category: category as any }),
   };
+
+  // Age filter
+  if (ageFilter === "minor") {
+    const eighteenYearsAgo = new Date();
+    eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
+    baseWhere.dob = { gt: eighteenYearsAgo };
+  } else if (ageFilter === "adult") {
+    const eighteenYearsAgo = new Date();
+    eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
+    const sixtyYearsAgo = new Date();
+    sixtyYearsAgo.setFullYear(sixtyYearsAgo.getFullYear() - 60);
+    baseWhere.dob = { lte: eighteenYearsAgo, gt: sixtyYearsAgo };
+  } else if (ageFilter === "senior") {
+    const sixtyYearsAgo = new Date();
+    sixtyYearsAgo.setFullYear(sixtyYearsAgo.getFullYear() - 60);
+    baseWhere.dob = { lte: sixtyYearsAgo };
+  }
 
   // Type filter
   if (type === "new") {

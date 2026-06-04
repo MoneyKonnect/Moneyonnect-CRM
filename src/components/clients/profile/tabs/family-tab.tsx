@@ -19,6 +19,7 @@ import {
   Star,
   UserPlus,
   ArrowRight,
+  X,
   Heart,
   Zap,
   ChevronDown,
@@ -42,6 +43,7 @@ import {
   createFamilyGroup, createFamilyMember, updateFamilyMember,
   deleteFamilyMember, convertMemberToLead, convertMemberToClient,
   triggerMarriageEvent, updateSuggestionStatus, addCustomSuggestion,
+  linkExistingClientToFamily,
 } from "@/actions/family";
 
 // ─── Config ─────────────────────────────────────────────────────────────────
@@ -785,11 +787,42 @@ function CreateFamilyGroupModal({ open, onClose, clientId }: any) {
 
 // ─── Add Member Modal ─────────────────────────────────────────────────────────
 
-function AddFamilyMemberModal({ open, onClose, familyGroupId, isHUF, onRefresh }: any) {
+function AddFamilyMemberModal({ open, onClose, familyGroupId, isHUF, onRefresh, ownerId }: any) {
   const router = useRouter();
+  const [mode, setMode] = useState<"new" | "existing">("existing");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [selectedClient, setSelectedClient] = useState<any>(null);
+  const [searching, setSearching] = useState(false);
+  const [relationship, setRelationship] = useState("");
+  const [linking, setLinking] = useState(false);
+
   const { register, handleSubmit, setValue, watch, reset, formState: { isSubmitting } } = useForm<Record<string,any>>({
     defaultValues: { dependencyType: "INDEPENDENT", isHufCoparcener: false, communicationConsent: false, isHeadOfFamily: false },
   });
+
+  const searchClients = async (q: string) => {
+    if (!q || q.length < 2) { setSearchResults([]); return; }
+    setSearching(true);
+    try {
+      const res = await fetch(`/api/clients/search?q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      setSearchResults(data.clients || []);
+    } catch { setSearchResults([]); }
+    setSearching(false);
+  };
+
+  const handleLink = async () => {
+    if (!selectedClient || !relationship) { toast.error("Select a client and relationship"); return; }
+    setLinking(true);
+    const result = await linkExistingClientToFamily(familyGroupId, selectedClient.id, relationship);
+    setLinking(false);
+    if (result.success) {
+      toast.success(`${selectedClient.fullName} added to family!`);
+      setSelectedClient(null); setSearchQuery(""); setRelationship("");
+      onClose(); onRefresh();
+    } else toast.error(result.error || "Failed");
+  };
 
   const onSubmit = async (data: any) => {
     const result = await createFamilyMember(familyGroupId, data);
@@ -807,6 +840,85 @@ function AddFamilyMemberModal({ open, onClose, familyGroupId, isHUF, onRefresh }
         <DialogHeader>
           <DialogTitle>Add Family Member</DialogTitle>
         </DialogHeader>
+
+        {/* Mode toggle */}
+        <div className="flex gap-2 p-1 bg-muted rounded-lg">
+          <button type="button" onClick={() => setMode("existing")}
+            className={cn("flex-1 py-1.5 text-xs font-medium rounded-md transition-all", mode === "existing" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground")}>
+            Link Existing Client
+          </button>
+          <button type="button" onClick={() => setMode("new")}
+            className={cn("flex-1 py-1.5 text-xs font-medium rounded-md transition-all", mode === "new" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground")}>
+            Add New Member
+          </button>
+        </div>
+
+        {mode === "existing" ? (
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Search Client</Label>
+              <div className="relative">
+                <input
+                  value={searchQuery}
+                  onChange={(e) => { setSearchQuery(e.target.value); searchClients(e.target.value); }}
+                  placeholder="Search by name, PAN, phone..."
+                  className="w-full text-sm bg-background border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-500 text-foreground"
+                />
+                {searching && <Loader2 className="absolute right-3 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />}
+              </div>
+              {searchResults.length > 0 && !selectedClient && (
+                <div className="border border-border rounded-lg overflow-hidden max-h-40 overflow-y-auto">
+                  {searchResults.map((c: any) => (
+                    <button key={c.id} type="button"
+                      onClick={() => { setSelectedClient(c); setSearchQuery(c.fullName); setSearchResults([]); }}
+                      className="w-full flex items-center gap-3 px-3 py-2 hover:bg-accent transition-colors text-left border-b border-border last:border-0">
+                      <div className="w-7 h-7 rounded-full bg-brand-500/20 flex items-center justify-center text-xs font-bold text-brand-400 flex-shrink-0">
+                        {c.fullName?.charAt(0)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{c.fullName}</p>
+                        <p className="text-xs text-muted-foreground">{c.pan || c.phone || c.city}</p>
+                      </div>
+                      {c.aum && <span className="text-xs text-brand-400 font-medium">₹{(Number(c.aum)/10000000).toFixed(2)}Cr</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {selectedClient && (
+                <div className="flex items-center gap-2 p-2 bg-brand-500/5 border border-brand-500/20 rounded-lg">
+                  <div className="w-7 h-7 rounded-full bg-brand-500/20 flex items-center justify-center text-xs font-bold text-brand-400">
+                    {selectedClient.fullName?.charAt(0)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground">{selectedClient.fullName}</p>
+                    {selectedClient.aum && <p className="text-xs text-brand-400">AUM: ₹{(Number(selectedClient.aum)/10000000).toFixed(2)}Cr</p>}
+                  </div>
+                  <button type="button" onClick={() => { setSelectedClient(null); setSearchQuery(""); }} className="text-muted-foreground hover:text-danger">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <Label>Relationship *</Label>
+              <Select onValueChange={setRelationship}>
+                <SelectTrigger><SelectValue placeholder="Select relationship" /></SelectTrigger>
+                <SelectContent>
+                  {RELATIONSHIP_OPTIONS.map((r) => (
+                    <SelectItem key={r} value={r}>{r.replace(/_/g, " ")}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+              <Button type="button" onClick={handleLink} disabled={linking || !selectedClient || !relationship} className="bg-brand-500 hover:bg-brand-600 text-white">
+                {linking && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                Link to Family
+              </Button>
+            </DialogFooter>
+          </div>
+        ) : (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2 space-y-1.5">
@@ -908,6 +1020,7 @@ function AddFamilyMemberModal({ open, onClose, familyGroupId, isHUF, onRefresh }
             </Button>
           </DialogFooter>
         </form>
+        )}
       </DialogContent>
     </Dialog>
   );

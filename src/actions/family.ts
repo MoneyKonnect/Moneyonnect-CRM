@@ -403,3 +403,44 @@ async function logAudit(userId: string, action: string, entityType: string, enti
     });
   } catch {}
 }
+
+export async function linkExistingClientToFamily(familyGroupId: string, clientId: string, relationship: string) {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+
+  const [group, client] = await Promise.all([
+    db.familyGroup.findFirst({ where: { id: familyGroupId, ownerId: session.user.id, deletedAt: null } }),
+    db.client.findFirst({ where: { id: clientId, ownerId: session.user.id, deletedAt: null } }),
+  ]);
+  if (!group) return { success: false, error: "Family group not found" };
+  if (!client) return { success: false, error: "Client not found" };
+
+  // Check if already linked
+  const existing = await db.familyMember.findFirst({ where: { familyGroupId, linkedClientId: clientId } });
+  if (existing) return { success: false, error: "Client already in this family" };
+
+  await db.familyMember.create({
+    data: {
+      familyGroupId,
+      fullName: client.fullName,
+      relationship: relationship as any,
+      phone: client.phone || null,
+      email: client.email || null,
+      linkedClientId: clientId,
+      dependencyType: "INDEPENDENT",
+    },
+  });
+
+  return { success: true };
+}
+
+export async function getFamilyGroupAUM(familyGroupId: string) {
+  const members = await db.familyMember.findMany({
+    where: { familyGroupId, deletedAt: null },
+    include: { linkedClient: { select: { aum: true, fullName: true } } },
+  });
+  const totalAUM = members.reduce((sum, m) => {
+    return sum + (m.linkedClient?.aum ? Number(m.linkedClient.aum) : 0);
+  }, 0);
+  return totalAUM;
+}

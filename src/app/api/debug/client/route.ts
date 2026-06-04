@@ -1,38 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getClient } from "@/actions/clients";
+import { getFamilyGroupsForClient } from "@/actions/family";
 
 export async function GET(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" });
     const clientId = req.nextUrl.searchParams.get("id") || "cmpz6cah70047in7kjkq9lzm5";
+    
     const results: any = {};
 
-    const tests = [
-      { key: "basic", include: {} },
-      { key: "residency", include: { residency: true } },
-      { key: "tasks", include: { tasks: true } },
-      { key: "goals", include: { goals: true } },
-      { key: "onboarding", include: { onboarding: true } },
-      { key: "riskProfile", include: { riskProfile: true } },
-      { key: "investments", include: { investments: true } },
-      { key: "familyMemberProfile", include: { familyMemberProfile: true } },
-      { key: "notes", include: { notes: true } },
-      { key: "interactions", include: { interactions: true } },
-      { key: "referrals", include: { referrals: true } },
-    ];
+    try {
+      const client = await getClient(clientId);
+      results.getClient = client ? "✅ OK - " + client.fullName : "❌ NULL";
+    } catch(e: any) { results.getClient = "❌ " + e.message?.substring(0, 200); }
 
-    for (const test of tests) {
-      try {
-        await (db.client.findFirst as any)({ where: { id: clientId }, include: test.include });
-        results[test.key] = "✅ OK";
-      } catch(e: any) {
-        results[test.key] = "❌ " + e.message?.substring(0, 150);
-      }
-    }
+    try {
+      const groups = await getFamilyGroupsForClient(clientId);
+      results.getFamilyGroups = "✅ OK - " + groups.length + " groups";
+      results.groupDetails = groups.map((g: any) => ({
+        id: g.id,
+        name: g.name,
+        members: g.members?.length,
+        memberDetails: g.members?.map((m: any) => ({
+          id: m.id,
+          fullName: m.fullName,
+          linkedClientId: m.linkedClientId,
+          linkedClientAUM: m.linkedClient?.aum,
+        }))
+      }));
+    } catch(e: any) { results.getFamilyGroups = "❌ " + e.message?.substring(0, 200); }
 
-    return NextResponse.json(results, { status: 200 });
+    return NextResponse.json(results);
   } catch(e: any) {
     return NextResponse.json({ fatal: e.message });
   }

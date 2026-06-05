@@ -7,6 +7,10 @@ import { Providers } from "@/components/providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  icons: {
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+  },
   title: {
     default: "RelationIQ — Client Relationship Intelligence",
     template: "%s | RelationIQ",

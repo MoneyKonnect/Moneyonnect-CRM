@@ -13,7 +13,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-background flex">
       {/* Left panel - branding */}
-      <div className="hidden lg:flex lg:w-1/2 xl:w-[55%] relative overflow-hidden bg-gradient-to-br from-brand-950 via-brand-900 to-purple-950 flex-col justify-between p-12">
+      <div className="hidden lg:flex lg:w-1/2 xl:w-[55%] relative overflow-hidden flex-col justify-between p-12" style={{ backgroundColor: "#231f20" }}>
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute -top-1/2 -left-1/2 w-full h-full rounded-full bg-brand-500/10 blur-3xl" />
           <div className="absolute -bottom-1/2 -right-1/2 w-full h-full rounded-full bg-purple-500/10 blur-3xl" />

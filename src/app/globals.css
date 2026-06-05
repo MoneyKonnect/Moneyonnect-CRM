@@ -4,38 +4,32 @@
 
 @layer base {
   :root {
-    /* Core */
-    --background: 0 0% 100%;
-    --foreground: 224 71% 4%;
+    /* Core - Light mode */
+    --background: 0 0% 98%;
+    --foreground: 210 11% 15%;
 
-    /* Card/Surface */
     --card: 0 0% 100%;
-    --card-foreground: 224 71% 4%;
-    --surface: 220 14% 96%;
+    --card-foreground: 210 11% 15%;
+    --surface: 168 20% 96%;
     --surface-elevated: 0 0% 100%;
-    --surface-overlay: 220 13% 91%;
+    --surface-overlay: 168 15% 92%;
 
-    /* Popover */
     --popover: 0 0% 100%;
-    --popover-foreground: 224 71% 4%;
+    --popover-foreground: 210 11% 15%;
 
-    /* Brand */
-    --primary: 239 84% 67%;
+    /* MK Teal #3fd1b8 → HSL 170 60% 53% */
+    --primary: 170 60% 53%;
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary */
-    --secondary: 220 14% 96%;
-    --secondary-foreground: 224 71% 4%;
+    --secondary: 168 20% 94%;
+    --secondary-foreground: 210 11% 15%;
 
-    /* Muted */
-    --muted: 220 14% 96%;
-    --muted-foreground: 220 9% 46%;
+    --muted: 168 15% 94%;
+    --muted-foreground: 215 10% 50%;
 
-    /* Accent */
-    --accent: 220 14% 96%;
-    --accent-foreground: 224 71% 4%;
+    --accent: 168 15% 92%;
+    --accent-foreground: 210 11% 15%;
 
-    /* Semantic */
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
     --success: 142 71% 45%;
@@ -47,46 +41,39 @@
     --info: 199 89% 48%;
     --info-foreground: 0 0% 100%;
 
-    /* UI */
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 239 84% 67%;
+    --border: 168 15% 88%;
+    --input: 168 15% 88%;
+    --ring: 170 60% 53%;
     --radius: 0.625rem;
   }
 
   .dark {
-    /* Core */
-    --background: 224 71% 4%;
-    --foreground: 213 31% 91%;
+    /* Core - Dark mode based on MK dark #231f20 → HSL 345 8% 13% */
+    --background: 345 8% 10%;
+    --foreground: 170 10% 90%;
 
-    /* Card/Surface */
-    --card: 222 47% 7%;
-    --card-foreground: 213 31% 91%;
-    --surface: 222 47% 8%;
-    --surface-elevated: 222 47% 10%;
-    --surface-overlay: 222 47% 12%;
+    --card: 345 8% 13%;
+    --card-foreground: 170 10% 90%;
+    --surface: 345 8% 14%;
+    --surface-elevated: 345 8% 16%;
+    --surface-overlay: 345 8% 18%;
 
-    /* Popover */
-    --popover: 222 47% 7%;
-    --popover-foreground: 213 31% 91%;
+    --popover: 345 8% 13%;
+    --popover-foreground: 170 10% 90%;
 
-    /* Brand */
-    --primary: 239 84% 67%;
-    --primary-foreground: 0 0% 100%;
+    /* MK Teal */
+    --primary: 170 60% 53%;
+    --primary-foreground: 345 8% 10%;
 
-    /* Secondary */
-    --secondary: 222 47% 11%;
-    --secondary-foreground: 213 31% 91%;
+    --secondary: 345 8% 18%;
+    --secondary-foreground: 170 10% 90%;
 
-    /* Muted */
-    --muted: 223 47% 11%;
-    --muted-foreground: 215 16% 57%;
+    --muted: 345 8% 17%;
+    --muted-foreground: 170 8% 55%;
 
-    /* Accent */
-    --accent: 222 47% 14%;
-    --accent-foreground: 213 31% 91%;
+    --accent: 345 8% 20%;
+    --accent-foreground: 170 10% 90%;
 
-    /* Semantic */
     --destructive: 0 63% 31%;
     --destructive-foreground: 210 40% 98%;
     --success: 142 71% 45%;
@@ -98,10 +85,9 @@
     --info: 199 89% 48%;
     --info-foreground: 0 0% 100%;
 
-    /* UI */
-    --border: 216 34% 17%;
-    --input: 216 34% 17%;
-    --ring: 239 84% 67%;
+    --border: 345 8% 22%;
+    --input: 345 8% 22%;
+    --ring: 170 60% 53%;
   }
 }
 
@@ -115,32 +101,15 @@
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 
-  /* Custom scrollbar */
-  ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { @apply bg-transparent; }
+  ::-webkit-scrollbar-thumb { @apply bg-muted-foreground/20 rounded-full; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-muted-foreground/40; }
 
-  ::-webkit-scrollbar-track {
-    @apply bg-transparent;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    @apply bg-muted-foreground/20 rounded-full;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-muted-foreground/40;
-  }
-
-  /* Selection */
-  ::selection {
-    @apply bg-primary/20 text-foreground;
-  }
+  ::selection { @apply bg-primary/20 text-foreground; }
 }
 
 @layer utilities {
-  /* Glass effect */
   .glass {
     @apply backdrop-blur-xl bg-background/60 border border-border/50;
   }
@@ -149,32 +118,24 @@
     @apply backdrop-blur-md bg-card/80 border border-border/60 shadow-glass;
   }
 
-  /* Gradient text */
   .gradient-text {
-    @apply bg-gradient-to-r from-brand-400 to-purple-400 bg-clip-text text-transparent;
+    background: linear-gradient(135deg, #3fd1b8, #ffb839);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
 
-  /* Shimmer skeleton */
   .skeleton {
     @apply animate-shimmer bg-gradient-to-r from-muted via-muted-foreground/10 to-muted bg-[length:200%_100%];
   }
 
-  /* Hide scrollbar but keep functionality */
-  .no-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-  .no-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-
-  /* Focus ring */
   .focus-ring {
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
   }
 
-  /* Truncate text */
   .truncate-2 {
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -182,45 +143,31 @@
     overflow: hidden;
   }
 
-  /* Status badges */
-  .badge-success {
-    @apply bg-success/10 text-success border border-success/20;
-  }
-
-  .badge-warning {
-    @apply bg-warning/10 text-warning border border-warning/20;
-  }
-
-  .badge-danger {
-    @apply bg-danger/10 text-danger border border-danger/20;
-  }
-
-  .badge-info {
-    @apply bg-info/10 text-info border border-info/20;
-  }
-
-  .badge-muted {
-    @apply bg-muted text-muted-foreground border border-border;
-  }
+  .badge-success { @apply bg-success/10 text-success border border-success/20; }
+  .badge-warning { @apply bg-warning/10 text-warning border border-warning/20; }
+  .badge-danger  { @apply bg-danger/10 text-danger border border-danger/20; }
+  .badge-info    { @apply bg-info/10 text-info border border-info/20; }
+  .badge-muted   { @apply bg-muted text-muted-foreground border border-border; }
 }
 
 /* Page transitions */
 @keyframes page-enter {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
+.page-enter { animation: page-enter 0.25s ease-out; }
 
-.page-enter {
-  animation: page-enter 0.25s ease-out;
-}
+/* MK Logo dot animation delays */
+.mk-dot-1 { animation-delay: 0ms; }
+.mk-dot-2 { animation-delay: 100ms; }
+.mk-dot-3 { animation-delay: 200ms; }
+.mk-dot-4 { animation-delay: 300ms; }
+.mk-dot-5 { animation-delay: 400ms; }
+.mk-dot-6 { animation-delay: 500ms; }
+.mk-dot-7 { animation-delay: 600ms; }
+.mk-dot-8 { animation-delay: 700ms; }
+.mk-dot-9 { animation-delay: 800ms; }
 
-/* Kanban column gradient */
 .kanban-column-gradient {
   background: linear-gradient(
     to bottom,
@@ -229,41 +176,22 @@
   );
 }
 
-/* ── Mobile responsive utilities ── */
 @media (max-width: 768px) {
-  /* Sidebar overlays on mobile */
   aside {
-    position: fixed;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    z-index: 40;
-    transform: translateX(-100%);
-    transition: transform 0.2s ease;
+    position: fixed; left: 0; top: 0; bottom: 0; z-index: 40;
+    transform: translateX(-100%); transition: transform 0.2s ease;
   }
-  aside.mobile-open {
-    transform: translateX(0);
-  }
-  
-  /* Wider modals on mobile */
-  [role="dialog"] .sm\:max-w-md {
-    max-width: calc(100vw - 2rem) !important;
-  }
-  
-  /* Full-width tables on mobile scroll */
-  .overflow-x-auto {
-    -webkit-overflow-scrolling: touch;
-  }
+  aside.mobile-open { transform: translateX(0); }
+  [role="dialog"] .sm\:max-w-md { max-width: calc(100vw - 2rem) !important; }
+  .overflow-x-auto { -webkit-overflow-scrolling: touch; }
 }
 
-/* ── Print styles for PDF export ── */
 @media print {
   nav, aside, header, .no-print { display: none !important; }
   body { background: white !important; }
   .print-full { max-width: 100% !important; padding: 0 !important; }
 }
 
-/* ── Scrollbar styling ── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 3px; }
@@ -271,8 +199,6 @@
 
 @keyframes slide-in-right {
   from { transform: translateX(100%); }
-  to { transform: translateX(0); }
+  to   { transform: translateX(0); }
 }
-.animate-slide-in-right {
-  animation: slide-in-right 0.25s cubic-bezier(0.32, 0.72, 0, 1);
-}
+.animate-slide-in-right { animation: slide-in-right 0.25s cubic-bezier(0.32, 0.72, 0, 1); }

@@ -1,4 +1,5 @@
 "use client";
+import { MKLogo } from "@/components/ui/mk-logo";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -110,9 +111,7 @@ export function Sidebar({ counts = {} }: SidebarProps) {
     )}>
       {/* Logo */}
       <div className={cn("flex items-center gap-2.5 px-4 py-4 border-b border-border flex-shrink-0", collapsed && "justify-center px-2")}>
-        <div className="w-7 h-7 rounded-xl bg-brand-500 flex items-center justify-center flex-shrink-0">
-          <Shield className="h-4 w-4 text-white" />
-        </div>
+        <MKLogo size={28} animated={false} className="flex-shrink-0" />
         {!collapsed && (
           <span className="font-bold text-sm text-foreground tracking-tight">
             Relation<span className="text-brand-400">IQ</span>

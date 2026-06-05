@@ -1,7 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const to = req.nextUrl.searchParams.get("to") || "aditya.anthwal@moneykonnect.in";
+  
   try {
     const transporter = nodemailer.createTransport({
       host: "smtp.gmail.com",
@@ -14,30 +16,15 @@ export async function GET() {
       tls: { rejectUnauthorized: false },
     });
 
-    // Verify connection
-    await transporter.verify();
-    
-    // Send test email
     await transporter.sendMail({
-      from: '"RelationIQ" <info@moneykonnect.in>',
-      to: "aditya.anthwal@moneykonnect.in",
-      subject: "RelationIQ Email Test",
-      html: "<p>Email is working! ✅</p>",
+      from: '"MoneyKonnect CRM" <info@moneykonnect.in>',
+      to,
+      subject: "RelationIQ Team Invite Test",
+      html: `<p>Test invite email sent to <b>${to}</b> ✅</p><p>If you received this, email is working!</p>`,
     });
 
-    return NextResponse.json({ 
-      success: true, 
-      message: "Email sent!",
-      gmailPasswordSet: !!process.env.GMAIL_APP_PASSWORD,
-      passwordLength: process.env.GMAIL_APP_PASSWORD?.length
-    });
+    return NextResponse.json({ success: true, sentTo: to });
   } catch (error: any) {
-    return NextResponse.json({ 
-      success: false, 
-      error: error.message,
-      code: error.code,
-      gmailPasswordSet: !!process.env.GMAIL_APP_PASSWORD,
-      passwordLength: process.env.GMAIL_APP_PASSWORD?.length
-    });
+    return NextResponse.json({ success: false, error: error.message, code: error.code });
   }
 }

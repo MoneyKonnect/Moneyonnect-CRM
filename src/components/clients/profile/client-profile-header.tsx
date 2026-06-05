@@ -244,7 +244,6 @@ export function ClientProfileHeader({ client }: { client: any }) {
             {[
               { label: "Interactions", value: client._count?.interactions || 0 },
               { label: "Tasks", value: client._count?.tasks || 0 },
-              { label: "Documents", value: client._count?.documents || 0 },
               { label: "Investments", value: client.investments?.length || 0 },
               { label: "Goals", value: client.goals?.length || 0 },
               { label: "Client since", value: formatDate(client.createdAt, "short") },

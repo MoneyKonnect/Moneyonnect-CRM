@@ -166,11 +166,21 @@ function InviteMemberModal({ open, onClose }: { open: boolean; onClose: () => vo
   });
 
   const onSubmit = async (data: any) => {
-    // In production: send invite email via API
-    toast.success(`Invite sent to ${data.email}!`, {
-      description: `They'll receive an email with a link to join as ${data.role}`,
-    });
-    onClose();
+    try {
+      const res = await fetch("/api/team/invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: data.email, role: data.role }),
+      });
+      const result = await res.json();
+      if (!res.ok) { toast.error(result.error || "Failed to send invite"); return; }
+      toast.success(`Invite sent to ${data.email}!`, {
+        description: `They'll receive an email with a link to join as ${data.role}`,
+      });
+      onClose();
+    } catch {
+      toast.error("Failed to send invite");
+    }
   };
 
   return (

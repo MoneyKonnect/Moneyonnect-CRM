@@ -27,13 +27,13 @@ export async function sendInviteEmail({
   const roleLabel = role === "SUPER_ADMIN" ? "Super Admin" : "Admin";
 
   await transporter.sendMail({
-    from: `"RelationIQ | MoneyKonnect" <info@moneykonnect.in>`,
+    from: `"MoneyKonnect CRM" <info@moneykonnect.in>`,
     to,
-    subject: `You have been invited to RelationIQ`,
+    subject: `You have been invited to MoneyKonnect CRM`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="text-align: center; margin-bottom: 30px;">
-          <h1 style="color: #6366f1; font-size: 28px; margin: 0;">RelationIQ</h1>
+          <h1 style="color: #3fd1b8; font-size: 28px; margin: 0;">MoneyKonnect CRM</h1>
           <p style="color: #64748b; margin: 5px 0 0;">by MoneyKonnect</p>
         </div>
         <div style="background: #f8fafc; border-radius: 12px; padding: 30px; margin-bottom: 24px;">

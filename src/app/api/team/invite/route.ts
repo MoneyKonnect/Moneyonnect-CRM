@@ -48,8 +48,12 @@ export async function POST(req: NextRequest) {
     await sendInviteEmail({ to: email, inviterName: userName, inviteUrl, role });
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Invite error:", error);
-    return NextResponse.json({ error: "Failed to send invite" }, { status: 500 });
+    return NextResponse.json({ 
+      error: "Failed to send invite",
+      details: error.message,
+      code: error.code
+    }, { status: 500 });
   }
 }

@@ -173,7 +173,7 @@ function InviteMemberModal({ open, onClose }: { open: boolean; onClose: () => vo
         body: JSON.stringify({ email: data.email, role: data.role }),
       });
       const result = await res.json();
-      if (!res.ok) { toast.error(result.error || "Failed to send invite"); return; }
+      if (!res.ok) { toast.error(result.error || "Failed to send invite", { description: result.details }); return; }
       toast.success(`Invite sent to ${data.email}!`, {
         description: `They'll receive an email with a link to join as ${data.role}`,
       });

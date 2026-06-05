@@ -29,8 +29,7 @@ import { cn, getInitials, generateAvatarColor, formatDate } from "@/lib/utils";
 const ROLE_CONFIG = {
   SUPER_ADMIN: { label: "Super Admin", icon: Crown,  color: "text-amber-400",   bg: "bg-amber-500/10"  },
   ADMIN:       { label: "Admin",       icon: Shield, color: "text-red-400",     bg: "bg-red-500/10"    },
-  ADVISOR:     { label: "Advisor",     icon: Shield, color: "text-brand-400",   bg: "bg-brand-500/10"  },
-  VIEWER:      { label: "Viewer",      icon: Eye,    color: "text-muted-foreground", bg: "bg-muted"    },
+
 };
 
 export function OrganizationClient({ data, currentUserId }: { data: any; currentUserId: string }) {
@@ -75,7 +74,7 @@ export function OrganizationClient({ data, currentUserId }: { data: any; current
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
             { label: "Total Members", value: data.members.length },
-            { label: "Advisors",      value: data.members.filter((m: any) => m.role === "ADVISOR").length },
+            
             { label: "Admins",        value: data.members.filter((m: any) => ["ADMIN","SUPER_ADMIN"].includes(m.role)).length },
             { label: "Plan",          value: data.plan, highlight: true },
           ].map(stat => (
@@ -96,7 +95,7 @@ export function OrganizationClient({ data, currentUserId }: { data: any; current
         </div>
         <div className="divide-y divide-border">
           {data.members.map((member: any) => {
-            const roleCfg = ROLE_CONFIG[member.role as keyof typeof ROLE_CONFIG] || ROLE_CONFIG.ADVISOR;
+            const roleCfg = ROLE_CONFIG[member.role as keyof typeof ROLE_CONFIG] || ROLE_CONFIG.ADMIN;
             const RoleIcon = roleCfg.icon;
             const isYou = member.id === currentUserId;
             return (
@@ -163,7 +162,7 @@ export function OrganizationClient({ data, currentUserId }: { data: any; current
 
 function InviteMemberModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { register, handleSubmit, setValue, formState: { isSubmitting } } = useForm<Record<string,any>>({
-    defaultValues: { role: "ADVISOR" },
+    defaultValues: { role: "ADMIN" },
   });
 
   const onSubmit = async (data: any) => {
@@ -189,7 +188,7 @@ function InviteMemberModal({ open, onClose }: { open: boolean; onClose: () => vo
           </div>
           <div className="space-y-1.5">
             <Label>Role</Label>
-            <Select defaultValue="ADVISOR" onValueChange={v => setValue("role", v)}>
+            <Select defaultValue="ADMIN" onValueChange={v => setValue("role", v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {Object.entries(ROLE_CONFIG).map(([value, cfg]) => (

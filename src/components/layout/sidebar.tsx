@@ -114,7 +114,7 @@ export function Sidebar({ counts = {} }: SidebarProps) {
         <MKLogo size={28} animated={false} className="flex-shrink-0" />
         {!collapsed && (
           <span className="font-bold text-sm text-foreground tracking-tight">
-            Relation<span className="text-brand-400">IQ</span>
+            MoneyKonnect <span className="text-brand-400">CRM</span>
           </span>
         )}
       </div>

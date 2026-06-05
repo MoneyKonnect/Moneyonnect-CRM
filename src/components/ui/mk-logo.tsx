@@ -8,90 +8,88 @@ interface MKLogoProps {
   className?: string;
 }
 
-export function MKLogo({ size = 32, animated = true, className }: MKLogoProps) {
+export function MKLogo({ size = 32, animated = false, className }: MKLogoProps) {
+  // The MK logo: 3x3 grid of large dots connected by thick flowing bezier curves
+  // Studying the actual logo: dots are large circles, connections are thick rounded tubes
+  // The S-curve goes: top-left connects right, top-right connects down-left (crossing)
+  // middle-left connects right, middle-right connects down-left (crossing again)
+  // bottom-left connects right, bottom-right standalone
+
   const s = size;
-  const pad = s * 0.1;
-  const inner = s - pad * 2;
-  const cell = inner / 2;
+  const teal = "#3fd1b8";
 
-  // 9 dot positions (3x3 grid)
-  const dots = [
-    { x: pad + 0,        y: pad + 0,        delay: 0 },
-    { x: pad + cell / 2, y: pad + 0,        delay: 100 },
-    { x: pad + cell,     y: pad + 0,        delay: 200 },
-    { x: pad + 0,        y: pad + cell / 2, delay: 300 },
-    { x: pad + cell / 2, y: pad + cell / 2, delay: 400 },
-    { x: pad + cell,     y: pad + cell / 2, delay: 500 },
-    { x: pad + 0,        y: pad + cell,     delay: 600 },
-    { x: pad + cell / 2, y: pad + cell,     delay: 700 },
-    { x: pad + cell,     y: pad + cell,     delay: 800 },
-  ];
-
-  const r = s * 0.055;
-
-  // Connection paths (the flowing S-curve connections)
-  const connections = [
-    // Top row connections
-    `M ${dots[0].x} ${dots[0].y} Q ${dots[1].x} ${dots[0].y - r * 2} ${dots[2].x} ${dots[2].y}`,
-    // Middle row connections
-    `M ${dots[3].x} ${dots[3].y} Q ${dots[4].x} ${dots[3].y + r * 2} ${dots[5].x} ${dots[5].y}`,
-    // Bottom row
-    `M ${dots[6].x} ${dots[6].y} Q ${dots[7].x} ${dots[6].y - r * 2} ${dots[8].x} ${dots[8].y}`,
-    // Vertical connections
-    `M ${dots[0].x} ${dots[0].y} Q ${dots[0].x + r * 2} ${dots[3].y} ${dots[6].x} ${dots[6].y}`,
-    `M ${dots[2].x} ${dots[2].y} Q ${dots[2].x - r * 2} ${dots[5].y} ${dots[8].x} ${dots[8].y}`,
-    // Diagonal S-curves (the signature MK pattern)
-    `M ${dots[0].x} ${dots[2].y} C ${dots[1].x} ${dots[2].y} ${dots[1].x} ${dots[6].y} ${dots[2].x} ${dots[6].y}`,
-    `M ${dots[6].x} ${dots[0].y} C ${dots[7].x} ${dots[0].y} ${dots[7].x} ${dots[8].y} ${dots[8].x} ${dots[8].y}`,
-  ];
-
+  // Using a fixed viewBox of 100x100 for precision
   return (
     <svg
       width={s}
       height={s}
-      viewBox={`0 0 ${s} ${s}`}
+      viewBox="0 0 100 100"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={cn(className)}
     >
-      {/* Connection lines */}
-      {connections.map((d, i) => (
-        <path
-          key={i}
-          d={d}
-          stroke="#3fd1b8"
-          strokeWidth={s * 0.04}
-          strokeLinecap="round"
-          opacity="0.35"
-          fill="none"
-          style={animated ? {
-            strokeDasharray: 100,
-            strokeDashoffset: 100,
-            animation: `mk-line 1.5s ease-out forwards`,
-            animationDelay: `${i * 80}ms`,
-          } : undefined}
-        />
-      ))}
+      {/*
+        Logo analysis from image:
+        - 3x3 grid, dots at roughly: col 20, 50, 80 / row 20, 50, 80
+        - Large dots radius ~13
+        - Thick connectors between dots — same color, stroke-width ~13, rounded caps
+        - Connection pattern:
+          Row 1: dot[0,0] → dot[0,1] (horizontal), dot[0,1] → dot[0,2] (horizontal)
+          Row 2: dot[1,0] → dot[1,1] (horizontal), dot[1,1] → dot[1,2] (horizontal)
+          Row 3: dot[2,0] → dot[2,1] (horizontal), dot[2,1] → dot[2,2] (horizontal)
+          The S-curves cross BETWEEN rows:
+          dot[0,1] curves down to dot[1,0] area
+          dot[0,2] curves down to dot[1,1] area
+          etc — creating the crossing wave pattern
+      */}
 
-      {/* Dots */}
-      {dots.map((dot, i) => (
-        <circle
-          key={i}
-          cx={dot.x}
-          cy={dot.y}
-          r={r}
-          fill="#3fd1b8"
-          style={animated ? {
-            animation: `mk-dot 1.5s ease-in-out infinite`,
-            animationDelay: `${dot.delay}ms`,
-          } : undefined}
-        />
-      ))}
+      {/* Top row horizontal connections */}
+      <line x1="20" y1="20" x2="50" y2="20" stroke={teal} strokeWidth="13" strokeLinecap="round"/>
+      <line x1="50" y1="20" x2="80" y2="20" stroke={teal} strokeWidth="13" strokeLinecap="round"/>
+
+      {/* Middle row horizontal connections */}
+      <line x1="20" y1="50" x2="50" y2="50" stroke={teal} strokeWidth="13" strokeLinecap="round"/>
+      <line x1="50" y1="50" x2="80" y2="50" stroke={teal} strokeWidth="13" strokeLinecap="round"/>
+
+      {/* Bottom row horizontal connections */}
+      <line x1="20" y1="80" x2="50" y2="80" stroke={teal} strokeWidth="13" strokeLinecap="round"/>
+      <line x1="50" y1="80" x2="80" y2="80" stroke={teal} strokeWidth="13" strokeLinecap="round"/>
+
+      {/* S-curve crossing connections — the signature MK pattern */}
+      {/* Top-right area curves down-left to middle row */}
+      <path
+        d="M 50 20 C 50 35, 20 35, 20 50"
+        stroke={teal} strokeWidth="13" strokeLinecap="round" fill="none"
+      />
+      <path
+        d="M 80 20 C 80 35, 50 35, 50 50"
+        stroke={teal} strokeWidth="13" strokeLinecap="round" fill="none"
+      />
+
+      {/* Middle row curves down-left to bottom row */}
+      <path
+        d="M 50 50 C 50 65, 20 65, 20 80"
+        stroke={teal} strokeWidth="13" strokeLinecap="round" fill="none"
+      />
+      <path
+        d="M 80 50 C 80 65, 50 65, 50 80"
+        stroke={teal} strokeWidth="13" strokeLinecap="round" fill="none"
+      />
+
+      {/* 9 dots — drawn LAST so they appear on top */}
+      <circle cx="20" cy="20" r="13" fill={teal}/>
+      <circle cx="50" cy="20" r="13" fill={teal}/>
+      <circle cx="80" cy="20" r="13" fill={teal}/>
+      <circle cx="20" cy="50" r="13" fill={teal}/>
+      <circle cx="50" cy="50" r="13" fill={teal}/>
+      <circle cx="80" cy="50" r="13" fill={teal}/>
+      <circle cx="20" cy="80" r="13" fill={teal}/>
+      <circle cx="50" cy="80" r="13" fill={teal}/>
+      <circle cx="80" cy="80" r="13" fill={teal}/>
     </svg>
   );
 }
 
-// Full loading screen version
 export function MKLoadingScreen() {
   return (
     <div
@@ -99,39 +97,35 @@ export function MKLoadingScreen() {
       style={{ backgroundColor: "#231f20" }}
     >
       <div className="flex flex-col items-center gap-6">
-        <MKLogo size={80} animated={true} />
+        <div style={{ animation: "pulse 2s ease-in-out infinite" }}>
+          <MKLogo size={80} />
+        </div>
         <div className="flex flex-col items-center gap-1">
           <p className="text-sm font-semibold tracking-widest uppercase" style={{ color: "#3fd1b8" }}>
-            RelationIQ
+            MoneyKonnect CRM
           </p>
-          <p className="text-xs text-white/30 tracking-wider">by MoneyKonnect</p>
+          <p className="text-xs tracking-wider" style={{ color: "rgba(255,255,255,0.3)" }}>
+            by Tayal Capital
+          </p>
         </div>
-        {/* Loading bar */}
         <div className="w-32 h-0.5 rounded-full overflow-hidden" style={{ backgroundColor: "rgba(63,209,184,0.15)" }}>
-          <div
-            className="h-full rounded-full"
-            style={{
-              backgroundColor: "#3fd1b8",
-              animation: "loading-bar 1.5s ease-in-out infinite",
-              width: "40%",
-            }}
-          />
+          <div style={{
+            height: "100%",
+            borderRadius: "9999px",
+            backgroundColor: "#3fd1b8",
+            animation: "loading-bar 1.5s ease-in-out infinite",
+          }}/>
         </div>
       </div>
-
       <style>{`
         @keyframes loading-bar {
-          0% { transform: translateX(-100%); width: 40%; }
-          50% { width: 60%; }
-          100% { transform: translateX(350%); width: 40%; }
+          0%   { width: 0%;   margin-left: 0%; }
+          50%  { width: 60%;  margin-left: 20%; }
+          100% { width: 0%;   margin-left: 100%; }
         }
-        @keyframes mk-dot {
-          0%, 100% { opacity: 0.3; r: ${80 * 0.055 * 0.8}px; }
-          50% { opacity: 1; r: ${80 * 0.055 * 1.2}px; }
-        }
-        @keyframes mk-line {
-          from { stroke-dashoffset: 100; opacity: 0; }
-          to { stroke-dashoffset: 0; opacity: 0.35; }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50%       { opacity: 0.85; transform: scale(0.96); }
         }
       `}</style>
     </div>

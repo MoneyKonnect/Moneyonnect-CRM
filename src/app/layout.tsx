@@ -8,8 +8,9 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
+    icon: "/mk-logo.jpeg",
+    shortcut: "/mk-logo.jpeg",
+    apple: "/mk-logo.jpeg",
   },
   title: {
     default: "RelationIQ — Client Relationship Intelligence",

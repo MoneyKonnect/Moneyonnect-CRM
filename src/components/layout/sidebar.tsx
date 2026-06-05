@@ -1,5 +1,5 @@
 "use client";
-import { MKLogo } from "@/components/ui/mk-logo";
+import Image from "next/image";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -111,7 +111,7 @@ export function Sidebar({ counts = {} }: SidebarProps) {
     )}>
       {/* Logo */}
       <div className={cn("flex items-center gap-2.5 px-4 py-4 border-b border-border flex-shrink-0", collapsed && "justify-center px-2")}>
-        <MKLogo size={28} animated={false} className="flex-shrink-0" />
+        <Image src="/mk-logo.jpeg" alt="MoneyKonnect" width={28} height={28} className="rounded-md flex-shrink-0" />
         {!collapsed && (
           <span className="font-bold text-sm text-foreground tracking-tight">
             MoneyKonnect <span className="text-brand-400">CRM</span>

@@ -38,7 +38,6 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { cn, formatDate, getInitials, generateAvatarColor, formatCurrency } from "@/lib/utils";
-import { LifeStageTimeline } from "@/components/intelligence/life-stage-timeline";
 import {
   createFamilyGroup, createFamilyMember, updateFamilyMember,
   deleteFamilyMember, convertMemberToLead, convertMemberToClient,
@@ -130,6 +129,7 @@ export function FamilyTab({ client, familyGroups = [] }: FamilyTabProps) {
           key={group.id}
           group={group}
           clientId={client.id}
+          client={client}
           onRefresh={() => router.refresh()}
         />
       ))}
@@ -146,15 +146,17 @@ export function FamilyTab({ client, familyGroups = [] }: FamilyTabProps) {
 
 // ─── Family Group Card ───────────────────────────────────────────────────────
 
-function FamilyGroupCard({ group, clientId, onRefresh }: { group: any; clientId: string; onRefresh: () => void }) {
+function FamilyGroupCard({ group, clientId, client, onRefresh }: { group: any; clientId: string; client: any; onRefresh: () => void }) {
   const [addMemberOpen, setAddMemberOpen] = useState(false);
   const [expanded, setExpanded] = useState(true);
   const [selectedMember, setSelectedMember] = useState<any>(null);
 
   const isHUF = group.groupType === "HUF";
-  const totalAUM = group.members.reduce((sum: number, m: any) => {
+  const headAUM = Number(client?.aum || 0);
+  const membersAUM = group.members.reduce((sum: number, m: any) => {
     return sum + (m.linkedClient?.aum ? Number(m.linkedClient.aum) : 0);
   }, 0);
+  const totalAUM = headAUM + membersAUM;
 
   const handleDeleteGroup = async () => {
     if (!confirm(`Delete "${group.name}"? This will remove all members.`)) return;
@@ -202,8 +204,9 @@ function FamilyGroupCard({ group, clientId, onRefresh }: { group: any; clientId:
                 </span>
               )}
               {totalAUM > 0 && (
-                <span className="text-2xs text-emerald-400 font-medium">
-                  Combined AUM: {formatCurrency(totalAUM)}
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30">
+                  <span className="text-xs text-muted-foreground">Family AUM:</span>
+                  <span className="text-sm font-bold text-emerald-400">{formatCurrency(totalAUM)}</span>
                 </span>
               )}
             </div>
@@ -246,8 +249,7 @@ function FamilyGroupCard({ group, clientId, onRefresh }: { group: any; clientId:
             </div>
           ) : (
             <>
-            <LifeStageTimeline members={group.members} />
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+<div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
               {group.members.map((member: any) => (
                 <FamilyMemberCard
                   key={member.id}

@@ -259,7 +259,6 @@ export function ClientsHeader({ total, newCount, convertedCount, existingCount }
           </div>
         </div>
       )}
-      </div>
 
       {/* Type tabs */}
       <div className="flex items-center gap-1 border-b border-border">

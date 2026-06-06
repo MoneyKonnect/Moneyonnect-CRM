@@ -1,16 +1,16 @@
 "use client";
 import Image from "next/image";
 
-import { useState } from "react";
+import { Ticket, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import {
+import { Ticket, usePathname } from "next/navigation";
+import { Ticket,
   LayoutDashboard, Users, TrendingUp, Megaphone,
   BarChart3, Building2, Zap, Sparkles, Bell, Settings,
   ChevronLeft, ChevronRight, Cake, IndianRupee, Shield,
   ChevronDown, CalendarClock, ExternalLink,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Ticket, cn } from "@/lib/utils";
 
 interface SidebarProps {
   counts?: {
@@ -140,6 +140,7 @@ export function Sidebar({ counts = {} }: SidebarProps) {
         {!collapsed && <p className="text-2xs font-semibold text-muted-foreground uppercase tracking-wider px-3 py-1 mt-2">Workspace</p>}
         {collapsed && <div className="my-2 border-t border-border mx-1" />}
 
+        <NavItem item={{ href: "/tickets", label: "My Work", icon: Ticket }} />
         <NavItem item={{ href: "/organization", label: "Organization",      icon: Building2 }} />
         <NavItem item={{ href: "/automations",  label: "Automations",       icon: Zap }} />
       </nav>

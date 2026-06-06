@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     let inviteData: any = null;
     if (token) {
       inviteData = await db.teamInvite.findUnique({ where: { token } });
-      if (!inviteData || inviteData.used || inviteData.expiresAt < new Date()) {
+      if (!inviteData || inviteData.usedAt || inviteData.expiresAt < new Date()) {
         return NextResponse.json({ error: "Invalid or expired invite link" }, { status: 400 });
       }
     }
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (inviteData) {
-      await db.teamInvite.update({ where: { id: inviteData.id }, data: { used: true } });
+      await db.teamInvite.update({ where: { id: inviteData.id }, data: { usedAt: new Date() } });
     }
 
     return NextResponse.json({ success: true, userId: user.id }, { status: 201 });

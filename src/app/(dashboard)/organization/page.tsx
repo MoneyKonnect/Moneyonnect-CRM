@@ -5,20 +5,25 @@ import { OrganizationClient } from "@/components/organization/organization-clien
 
 export const metadata: Metadata = { title: "Organization" };
 
-async function getOrgData(userId: string) {
-  const user = await db.user.findUnique({
-    where: { id: userId },
-    select: { id: true, name: true, email: true, role: true, createdAt: true },
-  });
-  // In a full multi-tenant app, you'd fetch all org members
-  // For now, show the current user as the only member
-  return { members: user ? [user] : [], plan: "Professional" };
+async function getOrgData() {
+  const [members, pendingInvites] = await Promise.all([
+    db.user.findMany({
+      select: { id: true, name: true, email: true, role: true, createdAt: true },
+      orderBy: { createdAt: "asc" },
+    }),
+    db.teamInvite.findMany({
+      where: { usedAt: null, expiresAt: { gt: new Date() } },
+      select: { id: true, email: true, role: true, createdAt: true, expiresAt: true },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
+  return { members, pendingInvites, plan: "Professional" };
 }
 
 export default async function OrganizationPage() {
   const session = await auth();
   const userId = (session?.user as any)?.id ?? "";
-  const data = await getOrgData(userId);
+  const data = await getOrgData();
   return (
     <div className="p-6 max-w-3xl space-y-6">
       <OrganizationClient data={data} currentUserId={userId} />

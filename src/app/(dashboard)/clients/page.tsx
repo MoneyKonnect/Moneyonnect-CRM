@@ -91,9 +91,9 @@ async function getClients(userId: string, params: Awaited<ClientsPageProps["sear
       },
     }),
     db.client.count({ where: baseWhere }),
-    db.client.count({ where: { // org-wide deletedAt: null, createdAt: { gte: ninetyDaysAgo }, sourceLeadId: null } }),
-    db.client.count({ where: { // org-wide deletedAt: null, sourceLeadId: { not: null } } }),
-    db.client.count({ where: { // org-wide deletedAt: null, createdAt: { lt: ninetyDaysAgo }, sourceLeadId: null } }),
+    db.client.count({ where: { deletedAt: null, createdAt: { gte: ninetyDaysAgo }, sourceLeadId: null } }),
+    db.client.count({ where: { deletedAt: null, sourceLeadId: { not: null } } }),
+    db.client.count({ where: { deletedAt: null, createdAt: { lt: ninetyDaysAgo }, sourceLeadId: null } }),
   ]);
 
   // Tag each client with type

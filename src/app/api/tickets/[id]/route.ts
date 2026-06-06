@@ -14,7 +14,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (existing.assignedToId !== userId && userRole !== "SUPER_ADMIN") return NextResponse.json({ error: "Not authorized" }, { status: 403 });
     const ticket = await db.ticket.update({
       where: { id: params.id },
-      data: { status, ...(status === "DONE" ? { completedAt: new Date() } : {}), updatedAt: new Date() },
+      data: { status, ...(status === "DONE" ? { completedAt: new Date() } : {}) },
       include: { assignedTo: { select: { id: true, name: true, email: true } }, assignedBy: { select: { id: true, name: true } } },
     });
     return NextResponse.json({ ticket });

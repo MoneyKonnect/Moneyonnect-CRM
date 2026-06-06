@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard, Users, Megaphone,
+  LayoutDashboard, Users, Megaphone, TrendingUp,
   BarChart3, Building2, Zap, Sparkles, Bell, Settings,
   ChevronLeft, ChevronRight, Cake, IndianRupee,
   ChevronDown, CalendarClock, ExternalLink, Ticket,
@@ -23,13 +23,6 @@ interface SidebarProps {
 const TrelloIcon = () => (
   <svg className="h-4 w-4 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
     <path d="M21 0H3C1.343 0 0 1.343 0 3v18c0 1.657 1.343 3 3 3h18c1.657 0 3-1.343 3-3V3c0-1.657-1.343-3-3-3zM10.44 18.18c0 .795-.645 1.44-1.44 1.44H4.56c-.795 0-1.44-.645-1.44-1.44V5.82c0-.795.645-1.44 1.44-1.44H9c.795 0 1.44.645 1.44 1.44v12.36zm10.44-6c0 .795-.645 1.44-1.44 1.44H15c-.795 0-1.44-.645-1.44-1.44V5.82c0-.795.645-1.44 1.44-1.44h4.44c.795 0 1.44.645 1.44 1.44v6.36z"/>
-  </svg>
-);
-
-const LeadsIcon = () => (
-  <svg className="h-4 w-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M3 3h18v4H3z"/><path d="M3 9h12v4H3z"/><path d="M3 15h8v4H3z"/>
-    <path d="M17 15l2 2 4-4"/>
   </svg>
 );
 
@@ -98,12 +91,6 @@ export function Sidebar({ counts = {} }: SidebarProps) {
         </button>
         {trelloOpen && (
           <div className="ml-4 mt-0.5 space-y-0.5 border-l border-border pl-3">
-            <Link href="/leads-board" prefetch={false}
-              className={cn("flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-all",
-                isActive("/leads-board") ? "text-brand-400 bg-brand-500/10" : "text-muted-foreground hover:text-foreground hover:bg-accent"
-              )}>
-              <LeadsIcon /> Leads Board
-            </Link>
             <Link href="/trello" prefetch={false}
               className={cn("flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-all",
                 isActive("/trello") && pathname === "/trello" ? "text-brand-400 bg-brand-500/10" : "text-muted-foreground hover:text-foreground hover:bg-accent"
@@ -125,6 +112,7 @@ export function Sidebar({ counts = {} }: SidebarProps) {
       <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
         <NavItem item={{ href: "/dashboard",     label: "Dashboard",         icon: LayoutDashboard }} />
         <NavItem item={{ href: "/clients",       label: "Clients",           icon: Users, countKey: "clients" }} />
+        <NavItem item={{ href: "/leads",         label: "Leads",             icon: TrendingUp, countKey: "leads" }} />
         <TrelloSection />
         <NavItem item={{ href: "/meeting-setup", label: "Meeting Set-Up",    icon: CalendarClock }} />
         <NavItem item={{ href: "/campaigns",     label: "Campaigns",         icon: Megaphone }} />

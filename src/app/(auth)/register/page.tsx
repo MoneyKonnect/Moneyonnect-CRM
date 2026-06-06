@@ -17,7 +17,7 @@ export default function RegisterPage() {
           <div className="mb-6">
             <h1 className="text-xl font-semibold text-foreground">Start your free trial</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Set up your RelationIQ workspace in 30 seconds
+              Set up your MoneyKonnect CRM workspace in 30 seconds
             </p>
           </div>
 

@@ -21,7 +21,7 @@ export async function GET(req: Request) {
     const backup = { exportedAt: new Date().toISOString(), counts: { leads: leads.length, clients: clients.length, tasks: tasks.length, users: users.length }, data: { leads, clients, tasks, users } };
     const json = JSON.stringify(backup, null, 2);
     const date = new Date().toISOString().split("T")[0];
-    const fileName = `relationiq-backup-${date}.json`;
+    const fileName = `mkccrm-backup-${date}.json`;
     const auth = getGoogleAuth();
     const client = await auth.getClient();
     const tokenRes = await client.getAccessToken();

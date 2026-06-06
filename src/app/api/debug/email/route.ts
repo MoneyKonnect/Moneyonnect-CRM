@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
     await transporter.sendMail({
       from: '"MoneyKonnect CRM" <info@moneykonnect.in>',
       to,
-      subject: "RelationIQ Team Invite Test",
+      subject: "MoneyKonnect CRM Team Invite Test",
       html: `<p>Test invite email sent to <b>${to}</b> ✅</p><p>If you received this, email is working!</p>`,
     });
 

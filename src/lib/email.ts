@@ -39,7 +39,7 @@ export async function sendInviteEmail({
         <div style="background: #f8fafc; border-radius: 12px; padding: 30px; margin-bottom: 24px;">
           <h2 style="color: #0f172a; margin: 0 0 12px;">You have been invited!</h2>
           <p style="color: #475569; margin: 0 0 8px;">
-            <strong>${inviterName}</strong> has invited you to join RelationIQ as <strong>${roleLabel}</strong>.
+            <strong>${inviterName}</strong> has invited you to join MoneyKonnect CRM as <strong>${roleLabel}</strong>.
           </p>
           <p style="color: #475569; margin: 0;">
             Click the button below to accept your invitation and set up your account.
@@ -55,7 +55,7 @@ export async function sendInviteEmail({
         </p>
         <div style="border-top: 1px solid #e2e8f0; margin-top: 24px; padding-top: 16px; text-align: center;">
           <p style="color: #94a3b8; font-size: 12px; margin: 0;">
-            RelationIQ &mdash; MoneyKonnect LLP &bull; info@moneykonnect.in
+            MoneyKonnect CRM &mdash; MoneyKonnect LLP &bull; info@moneykonnect.in
           </p>
         </div>
       </div>

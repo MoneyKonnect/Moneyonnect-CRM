@@ -120,7 +120,7 @@ ${client.residency&&client.residency.residencyType!=="RESIDENT_INDIAN"?`
     <div><div class="fl">FATCA</div><div class="fv">${client.residency.fatcaCompliant?"Compliant":"Pending"}</div></div>
   </div>
 </div>`:""}
-<div class="footer"><span>RelationIQ CRM - Confidential</span><span>Generated ${new Date().toLocaleString("en-IN")} - ${user?.name||"Advisor"}</span></div>
+<div class="footer"><span>MoneyKonnect CRM - Confidential</span><span>Generated ${new Date().toLocaleString("en-IN")} - ${user?.name||"Advisor"}</span></div>
 </div></body></html>`;
 
     return new NextResponse(html, {

@@ -33,6 +33,8 @@ model User {
   smartAlerts     SmartAlert[]  @relation("UserSmartAlerts")
   webinarsCreated Webinar[]  @relation("WebinarCreator")
   sentInvites     TeamInvite[] @relation("SentInvites")
+  ticketsAssigned Ticket[]     @relation("TicketsAssignedTo")
+  ticketsCreated  Ticket[]     @relation("TicketsAssignedBy")
 
   @@map("users")
 }
@@ -856,4 +858,27 @@ model TeamInvite {
   @@index([token])
   @@index([email])
   @@map("team_invites")
+}
+
+// ─── Tickets (Work Assignments) ────────────────────────────────────────────
+
+model Ticket {
+  id           String   @id @default(cuid())
+  title        String
+  description  String?  @db.Text
+  assignedToId String
+  assignedById String
+  status       String   @default("OPEN")
+  priority     String   @default("MEDIUM")
+  dueAt        DateTime
+  completedAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  assignedTo User @relation("TicketsAssignedTo", fields: [assignedToId], references: [id])
+  assignedBy User @relation("TicketsAssignedBy", fields: [assignedById], references: [id])
+
+  @@index([assignedToId])
+  @@index([status])
+  @@map("tickets")
 }

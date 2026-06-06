@@ -23,25 +23,25 @@ async function getAnalyticsData(userId: string) {
     // Clients by category
     db.client.groupBy({
       by: ["category"],
-      where: { ownerId: userId, deletedAt: null },
+      where: { deletedAt: null },
       _count: true,
     }),
     // Clients by status
     db.client.groupBy({
       by: ["status"],
-      where: { ownerId: userId, deletedAt: null },
+      where: { deletedAt: null },
       _count: true,
     }),
     // Leads by stage
     db.lead.groupBy({
       by: ["stage"],
-      where: { ownerId: userId, deletedAt: null },
+      where: { deletedAt: null },
       _count: true,
     }),
     // Leads by source
     db.lead.groupBy({
       by: ["source"],
-      where: { ownerId: userId, deletedAt: null },
+      where: { deletedAt: null },
       _count: true,
     }),
     // Tasks by status
@@ -68,7 +68,7 @@ async function getAnalyticsData(userId: string) {
     }),
     // Total AUM
     db.client.aggregate({
-      where: { ownerId: userId, deletedAt: null, aum: { not: null } },
+      where: { deletedAt: null, aum: { not: null } },
       _sum: { aum: true },
       _count: true,
     }),

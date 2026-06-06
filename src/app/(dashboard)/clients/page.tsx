@@ -35,7 +35,7 @@ async function getClients(userId: string, params: Awaited<ClientsPageProps["sear
   ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
   const baseWhere: any = {
-    ownerId: userId,
+    // org-wide
     deletedAt: null,
     ...(q && {
       OR: [
@@ -91,9 +91,9 @@ async function getClients(userId: string, params: Awaited<ClientsPageProps["sear
       },
     }),
     db.client.count({ where: baseWhere }),
-    db.client.count({ where: { ownerId: userId, deletedAt: null, createdAt: { gte: ninetyDaysAgo }, sourceLeadId: null } }),
-    db.client.count({ where: { ownerId: userId, deletedAt: null, sourceLeadId: { not: null } } }),
-    db.client.count({ where: { ownerId: userId, deletedAt: null, createdAt: { lt: ninetyDaysAgo }, sourceLeadId: null } }),
+    db.client.count({ where: { // org-wide deletedAt: null, createdAt: { gte: ninetyDaysAgo }, sourceLeadId: null } }),
+    db.client.count({ where: { // org-wide deletedAt: null, sourceLeadId: { not: null } } }),
+    db.client.count({ where: { // org-wide deletedAt: null, createdAt: { lt: ninetyDaysAgo }, sourceLeadId: null } }),
   ]);
 
   // Tag each client with type

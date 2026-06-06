@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Pipeline" };
 
 async function getLeadsGrouped(userId: string) {
   const leads = await db.lead.findMany({
-    where: { ownerId: userId, deletedAt: null },
+    where: { deletedAt: null },
     orderBy: { lastActivityAt: "desc" },
     include: {
       activities: { orderBy: { createdAt: "desc" } },

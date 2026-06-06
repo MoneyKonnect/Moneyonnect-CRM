@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: "AUM Dashboard" };
 
 async function getAumData(userId: string) {
   const clients = await db.client.findMany({
-    where: { ownerId: userId, deletedAt: null },
+    where: { deletedAt: null },
     select: {
       id: true, fullName: true, aum: true, category: true,
       status: true, createdAt: true,

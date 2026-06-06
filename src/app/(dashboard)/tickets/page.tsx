@@ -10,28 +10,32 @@ export default async function TicketsPage() {
   const userId = (session?.user as any)?.id ?? "";
   const userRole = (session?.user as any)?.role ?? "";
 
-  await db.ticket.updateMany({
-    where: { status: { in: ["OPEN", "IN_PROGRESS"] }, dueAt: { lt: new Date() } },
-    data: { status: "OVERDUE" },
-  });
+  try {
+    const [tickets, teamMembers] = await Promise.all([
+      db.ticket.findMany({
+        where: userRole === "SUPER_ADMIN" ? {} : { assignedToId: userId },
+        orderBy: [{ createdAt: "desc" }],
+        include: {
+          assignedTo: { select: { id: true, name: true, email: true } },
+          assignedBy: { select: { id: true, name: true } },
+        },
+      }),
+      userRole === "SUPER_ADMIN"
+        ? db.user.findMany({ select: { id: true, name: true, email: true, role: true } })
+        : Promise.resolve([]),
+    ]);
 
-  const [tickets, teamMembers] = await Promise.all([
-    db.ticket.findMany({
-      where: userRole === "SUPER_ADMIN" ? {} : { assignedToId: userId },
-      orderBy: [{ status: "asc" }, { dueAt: "asc" }],
-      include: {
-        assignedTo: { select: { id: true, name: true, email: true } },
-        assignedBy: { select: { id: true, name: true } },
-      },
-    }),
-    userRole === "SUPER_ADMIN"
-      ? db.user.findMany({ select: { id: true, name: true, email: true, role: true } })
-      : Promise.resolve([]),
-  ]);
-
-  return (
-    <div className="p-6 max-w-4xl space-y-6">
-      <TicketsClient tickets={tickets} teamMembers={teamMembers} isSuperAdmin={userRole === "SUPER_ADMIN"} myUserId={userId} />
-    </div>
-  );
+    return (
+      <div className="p-6 max-w-4xl space-y-6">
+        <TicketsClient tickets={tickets} teamMembers={teamMembers} isSuperAdmin={userRole === "SUPER_ADMIN"} myUserId={userId} />
+      </div>
+    );
+  } catch (e) {
+    console.error("Tickets page error:", e);
+    return (
+      <div className="p-6">
+        <p className="text-muted-foreground text-sm">Failed to load tickets. Please try again.</p>
+      </div>
+    );
+  }
 }

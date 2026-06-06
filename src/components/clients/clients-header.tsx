@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
   Users, Search, SlidersHorizontal, Plus,
   Download, Loader2, Upload, UserCheck, UserPlus, Star,
+  RefreshCw, X, FileText, CheckCircle, AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,6 +39,39 @@ export function ClientsHeader({ total, newCount, convertedCount, existingCount }
   const [searchValue, setSearchValue] = useState(searchParams.get("q") || "");
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [syncAumOpen, setSyncAumOpen] = useState(false);
+  const [aumFiles, setAumFiles] = useState<File[]>([]);
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<any>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const aumFileInput = useRef<HTMLInputElement>(null);
+
+  const handleAumFiles = (newFiles: FileList | null) => {
+    if (!newFiles) return;
+    const csvFiles = Array.from(newFiles).filter(f => f.name.endsWith(".csv"));
+    setAumFiles(prev => {
+      const existing = new Set(prev.map(f => f.name));
+      return [...prev, ...csvFiles.filter(f => !existing.has(f.name))];
+    });
+  };
+
+  const handleAumSync = async () => {
+    if (!aumFiles.length) { toast.error("Upload at least one CSV file"); return; }
+    setSyncing(true);
+    setSyncResult(null);
+    const formData = new FormData();
+    aumFiles.forEach(f => formData.append("files", f));
+    try {
+      const res = await fetch("/api/sync/aum", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) { toast.error(data.error || "Sync failed"); return; }
+      setSyncResult(data);
+      toast.success(data.message);
+      router.refresh();
+      setAumFiles([]);
+    } catch { toast.error("Sync failed"); }
+    finally { setSyncing(false); }
+  };
 
   const activeType = searchParams.get("type") || "";
   const activeStatus = searchParams.get("status") || "";
@@ -118,10 +152,113 @@ export function ClientsHeader({ total, newCount, convertedCount, existingCount }
             {exporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
             Export CSV
           </Button>
+          <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 text-brand-400 border-brand-500/30 hover:bg-brand-500/10" onClick={() => { setSyncAumOpen(true); setSyncResult(null); setAumFiles([]); }}>
+            <RefreshCw className="h-3.5 w-3.5" />
+            Sync AUM
+          </Button>
           <Button size="sm" className="h-8 bg-brand-500 hover:bg-brand-600 text-white text-xs gap-1.5 shadow-glow-sm" onClick={() => setAddModalOpen(true)}>
             <Plus className="h-3.5 w-3.5" /> Add Client
           </Button>
         </div>
+      </div>
+
+      {/* Sync AUM Modal */}
+      {syncAumOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) setSyncAumOpen(false); }}>
+          <div className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl">
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-border">
+              <div>
+                <h2 className="font-semibold text-foreground flex items-center gap-2">
+                  <RefreshCw className="h-4 w-4 text-brand-400" /> Sync AUM from CAMS + KFintech
+                </h2>
+                <p className="text-xs text-muted-foreground mt-0.5">Drop both CSV files to update all client AUMs</p>
+              </div>
+              <button onClick={() => setSyncAumOpen(false)} className="p-1.5 rounded-lg text-muted-foreground hover:bg-accent transition-all">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              {/* Drop zone */}
+              <div
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={(e) => { e.preventDefault(); setDragOver(false); handleAumFiles(e.dataTransfer.files); }}
+                onClick={() => aumFileInput.current?.click()}
+                className={cn(
+                  "border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all",
+                  dragOver ? "border-brand-500 bg-brand-500/5" : "border-border hover:border-brand-500/50 hover:bg-accent/30"
+                )}
+              >
+                <Upload className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
+                <p className="text-sm text-foreground font-medium">Drop CSV files here</p>
+                <p className="text-xs text-muted-foreground mt-1">CAMS AUM file + KFintech file (both at once)</p>
+                <input ref={aumFileInput} type="file" accept=".csv" multiple className="sr-only" onChange={(e) => handleAumFiles(e.target.files)} />
+              </div>
+
+              {/* File list */}
+              {aumFiles.length > 0 && (
+                <div className="space-y-2">
+                  {aumFiles.map(f => (
+                    <div key={f.name} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/50 border border-border">
+                      <FileText className="h-3.5 w-3.5 text-brand-400 flex-shrink-0" />
+                      <span className="text-xs text-foreground flex-1 truncate">{f.name}</span>
+                      <span className="text-xs text-muted-foreground">{(f.size / 1024).toFixed(0)}KB</span>
+                      <button onClick={() => setAumFiles(prev => prev.filter(x => x.name !== f.name))} className="text-muted-foreground hover:text-danger transition-colors">
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Sync button */}
+              <button
+                onClick={handleAumSync}
+                disabled={syncing || !aumFiles.length}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-brand-500 text-white text-sm font-medium hover:bg-brand-600 disabled:opacity-50 transition-all"
+              >
+                {syncing ? <><Loader2 className="h-4 w-4 animate-spin" /> Syncing...</> : <><RefreshCw className="h-4 w-4" /> Sync AUM Now</>}
+              </button>
+
+              {/* Result */}
+              {syncResult && (
+                <div className={cn("rounded-xl p-4 space-y-2 border", syncResult.success ? "bg-emerald-500/5 border-emerald-500/20" : "bg-danger/5 border-danger/20")}>
+                  <div className="flex items-center gap-2">
+                    {syncResult.success ? <CheckCircle className="h-4 w-4 text-emerald-400" /> : <AlertCircle className="h-4 w-4 text-danger" />}
+                    <p className="text-sm font-medium text-foreground">{syncResult.message}</p>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="bg-background rounded-lg p-2">
+                      <p className="text-lg font-bold text-emerald-400">{syncResult.updated}</p>
+                      <p className="text-2xs text-muted-foreground">Updated</p>
+                    </div>
+                    <div className="bg-background rounded-lg p-2">
+                      <p className="text-lg font-bold text-muted-foreground">{syncResult.notFound}</p>
+                      <p className="text-2xs text-muted-foreground">Not found</p>
+                    </div>
+                    <div className="bg-background rounded-lg p-2">
+                      <p className="text-lg font-bold text-brand-400">
+                        ₹{(syncResult.totalAUM / 10000000).toFixed(1)}Cr
+                      </p>
+                      <p className="text-2xs text-muted-foreground">Total AUM</p>
+                    </div>
+                  </div>
+                  {syncResult.significantChanges?.length > 0 && (
+                    <div className="max-h-28 overflow-y-auto space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">Changes:</p>
+                      {syncResult.significantChanges.map((c: string, i: number) => (
+                        <p key={i} className="text-xs text-foreground">{c}</p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       </div>
 
       {/* Type tabs */}

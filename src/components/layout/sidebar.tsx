@@ -1,16 +1,16 @@
 "use client";
 import Image from "next/image";
 
-import { Ticket, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Ticket, usePathname } from "next/navigation";
 import { Ticket,
   LayoutDashboard, Users, TrendingUp, Megaphone,
   BarChart3, Building2, Zap, Sparkles, Bell, Settings,
   ChevronLeft, ChevronRight, Cake, IndianRupee, Shield,
-  ChevronDown, CalendarClock, ExternalLink,
+  ChevronDown, CalendarClock, ExternalLink, Ticket,
 } from "lucide-react";
-import { Ticket, cn } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 interface SidebarProps {
   counts?: {

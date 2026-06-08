@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     const res = await fetch(`${BASE}${path}${sep}key=${KEY}&token=${TOKEN}`, {
       method: method || "POST",
       headers: { "Content-Type": "application/json" },
-      body: body ? JSON.stringify(body) : undefined,
+      ...(body && method !== "DELETE" ? { body: JSON.stringify(body) } : {}),
     });
     const data = await res.json();
     if (!res.ok) return NextResponse.json({ error: data }, { status: res.status });

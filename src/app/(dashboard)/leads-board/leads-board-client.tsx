@@ -15,8 +15,15 @@ const BOARD_URL = "https://trello.com/b/sxYFo8yq";
 const BASE = "https://api.trello.com/1";
 const Q = `key=${KEY}&token=${TOKEN}`;
 
-const api = (path: string, opts?: RequestInit) =>
-  fetch(`${BASE}${path}${path.includes("?") ? "&" : "?"}${Q}`, opts);
+const apiGet = (path: string) =>
+  fetch(`${BASE}${path}${path.includes("?") ? "&" : "?"}${Q}`);
+
+const apiWrite = (path: string, method: string, body?: any) =>
+  fetch("/api/trello-proxy", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path, method, body }),
+  });
 
 const COLORS: Record<string, { bg: string; text: string }> = {
   red:    { bg: "bg-red-500/20",     text: "text-red-400" },

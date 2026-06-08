@@ -1,4 +1,5 @@
 "use client";
+import { FoliosSection } from "@/components/clients/profile/folios-section";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -246,6 +247,12 @@ export function OverviewTab({ client }: { client: any }) {
             </div>
           )}
         </div>
+      </div>
+
+      {/* MF Portfolio from CAMS + KFintech */}
+      <div className="rounded-xl border border-border bg-card p-5">
+        <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">📊 MF Portfolio (CAMS + KFintech)</h3>
+        <FoliosSection clientId={client.id} />
       </div>
 
       {/* Modals */}

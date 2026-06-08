@@ -2,31 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 
-// ─── PAN validation — must be exactly 5 letters, 4 digits, 1 letter ──────────
 const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
 
 function isValidPAN(pan: string): boolean {
   return PAN_REGEX.test(pan.trim().toUpperCase());
 }
 
-// ─── CAMS parser — standard CSV, double-quote text qualifier ─────────────────
-function parseCAMS(text: string): { pan: string; aum: number; name: string }[] {
-  const results: { pan: string; aum: number; name: string }[] = [];
-
-  // Strip BOM, normalize line endings
-  const lines = text
-    .replace(/^\uFEFF/, "")
-    .replace(/\r\n/g, "\n")
-    .replace(/\r/g, "\n")
-    .split("\n");
-
+// ─── CAMS parser ──────────────────────────────────────────────────────────────
+function parseCAMS(text: string): { pan: string; folioNo: string; schemeName: string; fundHouse: string; units: number; aum: number; name: string }[] {
+  const results: any[] = [];
+  const lines = text.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
   if (lines.length < 2) return results;
 
-  // Parse a CSV row respecting double-quote fields
   const parseRow = (line: string): string[] => {
-    const cols: string[] = [];
-    let cur = "";
-    let inQ = false;
+    const cols: string[] = []; let cur = ""; let inQ = false;
     for (const ch of line) {
       if (ch === '"') { inQ = !inQ; continue; }
       if (ch === "," && !inQ) { cols.push(cur.trim()); cur = ""; continue; }
@@ -36,15 +25,16 @@ function parseCAMS(text: string): { pan: string; aum: number; name: string }[] {
     return cols;
   };
 
-  const headers = parseRow(lines[0]).map((h) => h.toLowerCase().trim());
+  const headers = parseRow(lines[0]).map(h => h.toLowerCase().trim());
   const panIdx = headers.indexOf("pan");
   const aumIdx = headers.indexOf("aum");
   const nameIdx = headers.indexOf("investor name");
+  const schemeIdx = headers.indexOf("scheme");
+  const folioIdx = headers.indexOf("folio no");
+  const unitsIdx = headers.indexOf("closing balance");
+  const fundIdx = headers.indexOf("rta agent code");
 
   if (panIdx === -1 || aumIdx === -1) return results;
-
-  // HashMap: PAN → { aum, name } — O(1) insert/update, O(n) total
-  const panMap: Record<string, { aum: number; name: string }> = {};
 
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i].trim();
@@ -52,48 +42,32 @@ function parseCAMS(text: string): { pan: string; aum: number; name: string }[] {
     const cols = parseRow(line);
     const pan = (cols[panIdx] || "").trim().toUpperCase();
     if (!isValidPAN(pan)) continue;
-
     const aum = parseFloat((cols[aumIdx] || "0").replace(/[₹,\s]/g, "")) || 0;
-    const name = nameIdx >= 0 ? (cols[nameIdx] || "").trim() : "";
-
-    // Sum folios for same PAN (O(1) HashMap update)
-    if (panMap[pan]) {
-      panMap[pan].aum += aum;
-    } else {
-      panMap[pan] = { aum, name };
-    }
+    const schemeName = schemeIdx >= 0 ? (cols[schemeIdx] || "").trim() : "";
+    if (!schemeName) continue;
+    results.push({
+      pan,
+      folioNo: folioIdx >= 0 ? (cols[folioIdx] || "").trim() : "",
+      schemeName,
+      fundHouse: fundIdx >= 0 ? (cols[fundIdx] || "").trim() : "",
+      units: unitsIdx >= 0 ? parseFloat((cols[unitsIdx] || "0").replace(/[,\s]/g, "")) || 0 : 0,
+      aum,
+      name: nameIdx >= 0 ? (cols[nameIdx] || "").trim() : "",
+    });
   }
-
-  for (const [pan, data] of Object.entries(panMap)) {
-    results.push({ pan, aum: data.aum, name: data.name });
-  }
-
   return results;
 }
 
-// ─── KFintech parser — single-quote text qualifier (non-standard RTA format) ──
-// The key insight: addresses contain commas, so they are wrapped in single quotes
-// e.g. 'FLAT NO A-T02, 21 KM KANAKPURA, ROAD, BANGALORE'
-// Stripping quotes first destroys this protection → columns shift → PAN gets garbage
-// Solution: treat ' as the quotechar, exactly like Python's csv.DictReader(quotechar="'")
-function parseKFintech(text: string): { pan: string; aum: number; name: string }[] {
-  const results: { pan: string; aum: number; name: string }[] = [];
-
-  const lines = text
-    .replace(/^\uFEFF/, "")
-    .replace(/\r\n/g, "\n")
-    .replace(/\r/g, "\n")
-    .split("\n");
-
+// ─── KFintech parser ─────────────────────────────────────────────────────────
+function parseKFintech(text: string): { pan: string; folioNo: string; schemeName: string; fundHouse: string; units: number; aum: number; name: string }[] {
+  const results: any[] = [];
+  const lines = text.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
   if (lines.length < 2) return results;
 
-  // Parse a row where SINGLE QUOTE is the text qualifier
   const parseRow = (line: string): string[] => {
-    const cols: string[] = [];
-    let cur = "";
-    let inQ = false;
+    const cols: string[] = []; let cur = ""; let inQ = false;
     for (const ch of line) {
-      if (ch === "'") { inQ = !inQ; continue; }  // single quote = field boundary
+      if (ch === "'") { inQ = !inQ; continue; }
       if (ch === "," && !inQ) { cols.push(cur.trim()); cur = ""; continue; }
       cur += ch;
     }
@@ -101,51 +75,43 @@ function parseKFintech(text: string): { pan: string; aum: number; name: string }
     return cols;
   };
 
-  const headers = parseRow(lines[0]).map((h) => h.toLowerCase().trim());
+  const headers = parseRow(lines[0]).map(h => h.toLowerCase().trim());
   const panIdx = headers.indexOf("pan_no");
   const aumIdx = headers.indexOf("rupee_bal");
   const nameIdx = headers.indexOf("inv_name");
+  const schemeIdx = headers.indexOf("scheme_name");
+  const folioIdx = headers.indexOf("folio_no");
+  const unitsIdx = headers.indexOf("bal_units");
+  const fundIdx = headers.indexOf("amc_code");
 
   if (panIdx === -1 || aumIdx === -1) return results;
-
-  // HashMap: PAN → { aum, name } — O(1) insert/update, O(n) total
-  const panMap: Record<string, { aum: number; name: string }> = {};
 
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i].trim();
     if (!line) continue;
     const cols = parseRow(line);
     const pan = (cols[panIdx] || "").trim().toUpperCase();
-    if (!isValidPAN(pan)) continue; // Skips phone numbers, names, garbage in PAN column
-
+    if (!isValidPAN(pan)) continue;
     const aum = parseFloat((cols[aumIdx] || "0").replace(/[₹,\s]/g, "")) || 0;
-    const name = nameIdx >= 0 ? (cols[nameIdx] || "").trim() : "";
-
-    // Sum folios for same PAN (O(1) HashMap update)
-    if (panMap[pan]) {
-      panMap[pan].aum += aum;
-    } else {
-      panMap[pan] = { aum, name };
-    }
+    const schemeName = schemeIdx >= 0 ? (cols[schemeIdx] || "").trim() : "";
+    if (!schemeName) continue;
+    results.push({
+      pan,
+      folioNo: folioIdx >= 0 ? (cols[folioIdx] || "").trim() : "",
+      schemeName,
+      fundHouse: fundIdx >= 0 ? (cols[fundIdx] || "").trim() : "",
+      units: unitsIdx >= 0 ? parseFloat((cols[unitsIdx] || "0").replace(/[,\s]/g, "")) || 0 : 0,
+      aum,
+      name: nameIdx >= 0 ? (cols[nameIdx] || "").trim() : "",
+    });
   }
-
-  for (const [pan, data] of Object.entries(panMap)) {
-    results.push({ pan, aum: data.aum, name: data.name });
-  }
-
   return results;
 }
 
-// ─── Detect which file type we're dealing with ────────────────────────────────
-function detectFileType(text: string): "cams" | "kfintech" | "unknown" {
+function detectFileType(text: string): "cams" | "kfintech" {
   const firstLine = text.replace(/^\uFEFF/, "").split(/\r?\n/)[0].toLowerCase();
-  // KFintech always has single-quoted headers and PAN_NO column
   if (firstLine.includes("pan_no") && firstLine.includes("rupee_bal")) return "kfintech";
-  // CAMS has PAN and AUM columns, no single quotes on headers
-  if (firstLine.includes('"pan"') || (firstLine.includes("pan") && firstLine.includes("aum"))) return "cams";
-  // Check for single quote wrapping (KFintech signature)
-  if (firstLine.startsWith("'")) return "kfintech";
-  return "unknown";
+  return "cams";
 }
 
 export async function POST(req: NextRequest) {
@@ -157,107 +123,100 @@ export async function POST(req: NextRequest) {
     const files = formData.getAll("files") as File[];
     if (!files.length) return NextResponse.json({ error: "No files uploaded" }, { status: 400 });
 
-    // ── Step 1: Parse all files → build master HashMap PAN → AUM ──────────────
-    // HashMap gives O(1) lookup when merging CAMS + KFintech for same PAN
-    const masterPAN: Record<string, number> = {};
-    const masterName: Record<string, string> = {};
-    const fileResults: { name: string; type: string; records: number; totalAUM: number }[] = [];
+    // Parse all files into folio rows
+    const allFolios: any[] = [];
+    const fileResults: any[] = [];
 
     for (const file of files) {
       const text = await file.text();
       const fileType = detectFileType(text);
-
-      let parsed: { pan: string; aum: number; name: string }[] = [];
-
-      if (fileType === "cams") {
-        parsed = parseCAMS(text);
-      } else if (fileType === "kfintech") {
-        parsed = parseKFintech(text);
-      } else {
-        fileResults.push({ name: file.name, type: "unknown", records: 0, totalAUM: 0 });
-        continue;
-      }
-
-      let fileTotalAUM = 0;
-      for (const { pan, aum, name } of parsed) {
-        // Merge: same PAN across CAMS + KFintech → add AUMs (O(1) HashMap)
-        masterPAN[pan] = (masterPAN[pan] || 0) + aum;
-        if (name && !masterName[pan]) masterName[pan] = name;
-        fileTotalAUM += aum;
-      }
-
-      fileResults.push({
-        name: file.name,
-        type: fileType,
-        records: parsed.length,
-        totalAUM: fileTotalAUM,
-      });
+      const parsed = fileType === "kfintech" ? parseKFintech(text) : parseCAMS(text);
+      parsed.forEach(f => { f.source = fileType === "kfintech" ? "KFINTECH" : "CAMS"; });
+      allFolios.push(...parsed);
+      fileResults.push({ name: file.name, type: fileType, records: parsed.length });
     }
 
-    const uniquePANs = Object.keys(masterPAN);
-    if (!uniquePANs.length) {
-      return NextResponse.json({
-        error: `No valid AUM data found. File info: ${fileResults.map((f) => `${f.name} (detected: ${f.type})`).join(", ")}`,
-      }, { status: 400 });
+    if (!allFolios.length) {
+      return NextResponse.json({ error: "No valid folio data found in files" }, { status: 400 });
     }
 
-    // ── Step 2: Fetch CRM clients with PAN, update AUM ────────────────────────
+    // Build PAN → total AUM map
+    const panAUM: Record<string, number> = {};
+    for (const f of allFolios) {
+      panAUM[f.pan] = (panAUM[f.pan] || 0) + f.aum;
+    }
+
+    // Fetch all clients with PAN
     const clients = await db.client.findMany({
       where: { deletedAt: null, pan: { not: null } },
       select: { id: true, pan: true, fullName: true, aum: true, category: true },
     });
 
-    const updateLog: string[] = [];
+    const clientByPAN: Record<string, typeof clients[0]> = {};
+    for (const c of clients) {
+      if (c.pan) clientByPAN[c.pan.toUpperCase().trim()] = c;
+    }
+
+    // Update client AUM + category
     let updated = 0;
+    const toUpdate = clients.filter(c => c.pan && isValidPAN(c.pan) && panAUM[c.pan.toUpperCase().trim()] !== undefined);
 
-    // Filter clients that have a matching PAN in our master map
-    const toUpdate = clients.filter(
-      (c) => c.pan && isValidPAN(c.pan) && masterPAN[c.pan.toUpperCase().trim()] !== undefined
-    );
-
-    // Batch DB updates — 50 at a time
     const BATCH = 50;
     for (let i = 0; i < toUpdate.length; i += BATCH) {
       const batch = toUpdate.slice(i, i + BATCH);
-      await Promise.all(
-        batch.map(async (client) => {
-          const pan = client.pan!.toUpperCase().trim();
-          const newAUM = masterPAN[pan];
-          const oldAUM = client.aum ? Number(client.aum) : 0;
-
-          // Auto-categorize based on AUM
-          let newCategory = client.category;
-          if (newAUM >= 100000000)      newCategory = "ULTRA_HNI"; // 1 Cr+
-          else if (newAUM >= 10000000)  newCategory = "HNI";       // 10L+
-          else if (newAUM >= 5000000)   newCategory = "PREMIUM";   // 5L+
-          else                          newCategory = "STANDARD";
-
-          await db.client.update({
-            where: { id: client.id },
-            data: { aum: newAUM, category: newCategory as any },
-          });
-
-          updated++;
-          if (Math.abs(newAUM - oldAUM) > 10000) {
-            updateLog.push(
-              `${client.fullName}: ₹${(oldAUM / 100000).toFixed(1)}L → ₹${(newAUM / 100000).toFixed(1)}L`
-            );
-          }
-        })
-      );
+      await Promise.all(batch.map(async (client) => {
+        const pan = client.pan!.toUpperCase().trim();
+        const newAUM = panAUM[pan];
+        let newCategory = client.category;
+        if (newAUM >= 100000000) newCategory = "ULTRA_HNI";
+        else if (newAUM >= 10000000) newCategory = "HNI";
+        else if (newAUM >= 5000000) newCategory = "PREMIUM";
+        else newCategory = "STANDARD";
+        await db.client.update({ where: { id: client.id }, data: { aum: newAUM, category: newCategory as any } });
+        updated++;
+      }));
     }
 
-    const notFound = uniquePANs.filter((p) => !clients.some((c) => c.pan?.toUpperCase().trim() === p)).length;
-    const totalAUM = toUpdate.reduce((sum, c) => sum + (masterPAN[c.pan!.toUpperCase().trim()] || 0), 0);
+    // Upsert folios — delete old folios for matched clients then insert fresh
+    const matchedPANs = Object.keys(panAUM).filter(pan => clientByPAN[pan]);
+
+    if (matchedPANs.length > 0) {
+      // Delete existing folios for these clients
+      const clientIds = matchedPANs.map(pan => clientByPAN[pan].id);
+      await db.folio.deleteMany({ where: { clientId: { in: clientIds } } });
+
+      // Insert fresh folios
+      const folioData = allFolios
+        .filter(f => clientByPAN[f.pan])
+        .map(f => ({
+          clientId: clientByPAN[f.pan].id,
+          pan: f.pan,
+          folioNo: f.folioNo || null,
+          schemeName: f.schemeName,
+          fundHouse: f.fundHouse || null,
+          units: f.units || null,
+          aum: f.aum,
+          source: f.source,
+          updatedAt: new Date(),
+        }));
+
+      // Insert in batches of 100
+      for (let i = 0; i < folioData.length; i += 100) {
+        await db.folio.createMany({ data: folioData.slice(i, i + 100) });
+      }
+    }
+
+    const totalAUM = toUpdate.reduce((sum, c) => sum + (panAUM[c.pan!.toUpperCase().trim()] || 0), 0);
+    const totalFolios = allFolios.filter(f => clientByPAN[f.pan]).length;
 
     return NextResponse.json({
       success: true,
       updated,
-      notFound,
+      notFound: Object.keys(panAUM).length - toUpdate.length,
       totalAUM,
+      totalFolios,
       fileResults,
-      significantChanges: updateLog.slice(0, 20),
-      message: `Updated AUM for ${updated} clients. Total AUM: ₹${(totalAUM / 10000000).toFixed(2)} Cr`,
+      message: `Updated ${updated} clients with ${totalFolios} folios. Total AUM: ₹${(totalAUM / 10000000).toFixed(2)} Cr`,
     });
   } catch (error) {
     console.error("AUM sync error:", error);

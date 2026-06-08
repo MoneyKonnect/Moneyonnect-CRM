@@ -91,6 +91,7 @@ export function Sidebar({ counts = {} }: SidebarProps) {
         </button>
         {trelloOpen && (
           <div className="ml-4 mt-0.5 space-y-0.5 border-l border-border pl-3">
+            <Link href="/leads-board" prefetch={false} className={cn("flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-all", isActive("/leads-board") ? "text-brand-400 bg-brand-500/10" : "text-muted-foreground hover:text-foreground hover:bg-accent")}><ExternalLink className="h-3.5 w-3.5" /> Leads Board</Link>
             <Link href="/trello" prefetch={false}
               className={cn("flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-all",
                 isActive("/trello") && pathname === "/trello" ? "text-brand-400 bg-brand-500/10" : "text-muted-foreground hover:text-foreground hover:bg-accent"

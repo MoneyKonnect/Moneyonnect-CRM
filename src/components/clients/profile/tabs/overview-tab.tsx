@@ -153,7 +153,8 @@ export function OverviewTab({ client }: { client: any }) {
             </div>
           )}
         </div>
-      {/* Referral */}
+
+        {/* Referral */}
         <ReferralSection client={client} />
       </div>
 
@@ -247,12 +248,20 @@ export function OverviewTab({ client }: { client: any }) {
             </div>
           )}
         </div>
-      </div>
 
-      {/* MF Portfolio from CAMS + KFintech */}
-      <div className="rounded-xl border border-border bg-card p-5">
-        <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">📊 MF Portfolio (CAMS + KFintech)</h3>
-        <FoliosSection clientId={client.id} />
+        {/* MF Portfolio — inside Investments panel */}
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-muted-foreground" /> MF Portfolio
+              <span className="text-2xs text-muted-foreground font-normal">CAMS + KFintech</span>
+            </h3>
+          </div>
+          <div className="p-5">
+            <FoliosSection clientId={client.id} />
+          </div>
+        </div>
+
       </div>
 
       {/* Modals */}

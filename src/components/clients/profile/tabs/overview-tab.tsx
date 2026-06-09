@@ -181,8 +181,10 @@ export function OverviewTab({ client }: { client: any }) {
           </div>
         )}
 
-        {/* Investments table */}
+        {/* ── Single Investments card with MF Portfolio inside ── */}
         <div className="rounded-xl border border-border bg-card overflow-hidden">
+
+          {/* Header */}
           <div className="flex items-center justify-between px-5 py-4 border-b border-border">
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
               <IndianRupee className="h-4 w-4 text-muted-foreground" /> Investments
@@ -193,8 +195,9 @@ export function OverviewTab({ client }: { client: any }) {
             </Button>
           </div>
 
+          {/* Manual investments list */}
           {client.investments?.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10 px-5 text-center">
+            <div className="flex flex-col items-center justify-center py-8 px-5 text-center">
               <TrendingUp className="h-8 w-8 text-muted-foreground/30 mb-2" />
               <p className="text-sm text-muted-foreground">No investments recorded</p>
               <Button size="sm" variant="outline" className="mt-3 text-xs" onClick={() => setAddInvOpen(true)}>
@@ -247,21 +250,22 @@ export function OverviewTab({ client }: { client: any }) {
               })}
             </div>
           )}
-        </div>
 
-        {/* MF Portfolio — inside Investments panel */}
-        <div className="rounded-xl border border-border bg-card overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-muted-foreground" /> MF Portfolio
-              <span className="text-2xs text-muted-foreground font-normal">CAMS + KFintech</span>
-            </h3>
+          {/* ── MF Portfolio section — inside the same card ── */}
+          <div className="border-t border-border">
+            <div className="flex items-center justify-between px-5 py-3 bg-muted/20">
+              <h4 className="text-xs font-semibold text-foreground flex items-center gap-2">
+                <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
+                MF Portfolio
+                <span className="text-2xs text-muted-foreground font-normal">CAMS + KFintech</span>
+              </h4>
+            </div>
+            <div className="px-5 pb-4">
+              <FoliosSection clientId={client.id} />
+            </div>
           </div>
-          <div className="p-5">
-            <FoliosSection clientId={client.id} />
-          </div>
-        </div>
 
+        </div>
       </div>
 
       {/* Modals */}

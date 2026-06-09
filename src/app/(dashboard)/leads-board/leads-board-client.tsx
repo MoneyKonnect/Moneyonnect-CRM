@@ -16,12 +16,16 @@ function trelloFetch(path: string, options?: RequestInit) {
   return fetch(`${BASE}${path}${sep}${AUTH}`, options);
 }
 
-const apiWrite = (path: string, method: string, body?: any) =>
-  fetch("/api/trello-proxy", {
+const apiWrite = async (path: string, method: string, body?: any) => {
+  const r = await fetch("/api/trello-proxy", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ path, method, body }),
   });
+  const data = await r.json();
+  if (!r.ok) throw new Error(data?.error?.message || data?.error || "Trello error");
+  return { ok: true, data };
+};
 
 const COLORS: Record<string, { bg: string; text: string; dot: string }> = {
   red:    { bg: "bg-red-500/15",     text: "text-red-400",     dot: "bg-red-500" },
@@ -85,7 +89,6 @@ export default function LeadsBoardClient() {
         cards: cardsData.filter((c: any) => c.idList === l.id).sort((a: any, b: any) => a.pos - b.pos),
       })));
       setLastUpdated(new Date());
-      // Members fetch separately — non-blocking
       trelloFetch(`/boards/${BOARD_ID}/members?fields=id,fullName,initials`)
         .then(r => r.json()).then(d => setBoardMembers(d)).catch(() => {});
     } catch (e) {
@@ -113,49 +116,47 @@ export default function LeadsBoardClient() {
   const saveCard = async () => {
     if (!selected) return; setSaving(true);
     try {
-      const r = await apiWrite(`/cards/${selected.id}`, "PUT", { name: editName, desc: editDesc, due: editDue ? new Date(editDue).toISOString() : null });
-      if (!r.ok) throw new Error();
+      await apiWrite(`/cards/${selected.id}`, "PUT", { name: editName, desc: editDesc, due: editDue ? new Date(editDue).toISOString() : null });
       toast.success("Saved"); setSelected(null); fetchBoard();
-    } catch { toast.error("Failed"); } finally { setSaving(false); }
+    } catch (e: any) { toast.error(e.message || "Failed"); } finally { setSaving(false); }
   };
 
   const deleteCard = async () => {
     if (!selected||!confirm(`Delete "${selected.name}"?`)) return;
     try { await apiWrite(`/cards/${selected.id}`, "DELETE"); toast.success("Deleted"); setSelected(null); fetchBoard(); }
-    catch { toast.error("Failed"); }
+    catch (e: any) { toast.error(e.message || "Failed"); }
   };
 
   const moveCard = async (cardId: string, toList: string) => {
     try { await apiWrite(`/cards/${cardId}`, "PUT", { idList: toList, pos: "bottom" }); fetchBoard(); }
-    catch { toast.error("Failed"); }
+    catch (e: any) { toast.error(e.message || "Failed"); }
   };
 
   const addCard = async (listId: string) => {
     if (!newCard.trim()) return; setAddingCard(true);
     try {
-      const r = await apiWrite(`/cards`, "POST", { name: newCard.trim(), idList: listId, pos: "bottom" });
-      if (!r.ok) throw new Error();
+      await apiWrite(`/cards`, "POST", { name: newCard.trim(), idList: listId, pos: "bottom" });
       toast.success("Card added"); setNewCard(""); setAddingTo(null); fetchBoard();
-    } catch { toast.error("Failed"); } finally { setAddingCard(false); }
+    } catch (e: any) { toast.error(e.message || "Failed"); } finally { setAddingCard(false); }
   };
 
   const createList = async () => {
     if (!newListName.trim()) return; setCreatingList(true);
     try {
-      const r = await apiWrite(`/lists`, "POST", { name: newListName.trim(), idBoard: BOARD_ID, pos: "bottom" });
-      if (!r.ok) throw new Error();
+      // Pass idBoard in the URL as a query param — Trello requires it there
+      await apiWrite(`/lists?idBoard=${BOARD_ID}&pos=bottom`, "POST", { name: newListName.trim() });
       toast.success("List created!"); setNewListName(""); setAddingList(false); fetchBoard();
-    } catch { toast.error("Failed"); } finally { setCreatingList(false); }
+    } catch (e: any) {
+      toast.error(e.message || "Failed to create list");
+    } finally { setCreatingList(false); }
   };
 
   const addComment = async () => {
     if (!selected||!newComment.trim()) return; setAddingComment(true);
     try {
-      const r = await apiWrite(`/cards/${selected.id}/actions/comments`, "POST", { text: newComment.trim() });
-      if (!r.ok) throw new Error();
-      const data = await r.json();
+      const { data } = await apiWrite(`/cards/${selected.id}/actions/comments`, "POST", { text: newComment.trim() });
       setComments(prev => [data, ...prev]); setNewComment("");
-    } catch { toast.error("Failed"); } finally { setAddingComment(false); }
+    } catch (e: any) { toast.error(e.message || "Failed"); } finally { setAddingComment(false); }
   };
 
   const toggleCheckItem = async (checklistId: string, itemId: string, current: string) => {
@@ -164,17 +165,16 @@ export default function LeadsBoardClient() {
     try {
       await apiWrite(`/cards/${selected.id}/checklist/${checklistId}/checkItem/${itemId}`, "PUT", { state: newState });
       setChecklists(prev => prev.map(cl => cl.id===checklistId ? { ...cl, checkItems: cl.checkItems.map(ci => ci.id===itemId ? { ...ci, state: newState } : ci) } : cl));
-    } catch { toast.error("Failed"); }
+    } catch (e: any) { toast.error(e.message || "Failed"); }
   };
 
   const addCheckItem = async (checklistId: string) => {
     if (!newChecklistItem.trim()||!selected) return;
     try {
-      const r = await apiWrite(`/checklists/${checklistId}/checkItems`, "POST", { name: newChecklistItem.trim() });
-      const data = await r.json();
+      const { data } = await apiWrite(`/checklists/${checklistId}/checkItems`, "POST", { name: newChecklistItem.trim() });
       setChecklists(prev => prev.map(cl => cl.id===checklistId ? { ...cl, checkItems: [...cl.checkItems, data] } : cl));
       setNewChecklistItem(""); setAddingCheckItem(null);
-    } catch { toast.error("Failed"); }
+    } catch (e: any) { toast.error(e.message || "Failed"); }
   };
 
   const toggleLabel = async (labelId: string) => {
@@ -183,7 +183,7 @@ export default function LeadsBoardClient() {
     try {
       if (hasLabel) { await apiWrite(`/cards/${selected.id}/idLabels/${labelId}`, "DELETE"); setSelected(s => s ? { ...s, labels: s.labels.filter(l => l.id!==labelId) } : s); }
       else { await apiWrite(`/cards/${selected.id}/idLabels`, "POST", { value: labelId }); const label = boardLabels.find(l => l.id===labelId); setSelected(s => s ? { ...s, labels: [...(s.labels||[]), label] } : s); }
-    } catch { toast.error("Failed"); }
+    } catch (e: any) { toast.error(e.message || "Failed"); }
   };
 
   const toggleMember = async (memberId: string) => {
@@ -192,7 +192,7 @@ export default function LeadsBoardClient() {
     try {
       if (hasMember) { await apiWrite(`/cards/${selected.id}/idMembers/${memberId}`, "DELETE"); setSelected(s => s ? { ...s, members: s.members.filter(m => m.id!==memberId) } : s); }
       else { await apiWrite(`/cards/${selected.id}/idMembers`, "POST", { value: memberId }); const member = boardMembers.find(m => m.id===memberId); setSelected(s => s ? { ...s, members: [...(s.members||[]), member] } : s); }
-    } catch { toast.error("Failed"); }
+    } catch (e: any) { toast.error(e.message || "Failed"); }
   };
 
   const total = lists.reduce((a,l) => a+l.cards.length, 0);

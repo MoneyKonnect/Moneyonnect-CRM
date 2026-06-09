@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 const KEY = "b85ba5057f173e2b7363a717e2c48211";
 const TOKEN = "ATTAe72af857fc3777acd049412149d0ee7e4bcd39544074e0b24536219555f32883EBE15FEE";
-const BOARD_ID = "sxYFo8yq";
+const BOARD_ID = "6a0eb85dd45fafc0c149cc2d";
 const BOARD_URL = "https://trello.com/b/sxYFo8yq";
 const BASE = "https://api.trello.com/1";
 const AUTH = `key=${KEY}&token=${TOKEN}`;

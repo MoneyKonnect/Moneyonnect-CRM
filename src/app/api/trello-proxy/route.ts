@@ -13,8 +13,13 @@ export async function POST(req: NextRequest) {
       headers: { "Content-Type": "application/json" },
       ...(body && method !== "DELETE" ? { body: JSON.stringify(body) } : {}),
     });
-    const data = await res.json();
-    if (!res.ok) return NextResponse.json({ error: data }, { status: res.status });
+
+    // Safely parse — Trello sometimes returns plain text errors
+    const text = await res.text();
+    let data: any;
+    try { data = JSON.parse(text); } catch { data = { message: text }; }
+
+    if (!res.ok) return NextResponse.json({ error: data?.message || text }, { status: res.status });
     return NextResponse.json(data);
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });

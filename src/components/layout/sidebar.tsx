@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, Megaphone, TrendingUp,
   BarChart3, Building2, Zap, Sparkles, Bell, Settings,
   ChevronLeft, ChevronRight, Cake, IndianRupee,
-  ChevronDown, CalendarClock, ExternalLink, Ticket,
+  ChevronDown, CalendarClock, ExternalLink, Ticket, FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -129,6 +129,7 @@ export function Sidebar({ counts = {} }: SidebarProps) {
         <NavItem item={{ href: "/tickets",      label: "My Work",           icon: Ticket, countKey: "tickets" }} />
         <NavItem item={{ href: "/organization", label: "Organization",       icon: Building2 }} />
         <NavItem item={{ href: "/automations",  label: "Automations",        icon: Zap }} />
+        <NavItem item={{ href: "/cas-parser",   label: "CAS Parser",         icon: FileText }} />
       </nav>
       <div className="border-t border-border p-2 space-y-0.5">
         <NavItem item={{ href: "/settings", label: "Settings", icon: Settings }} />

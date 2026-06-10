@@ -53,6 +53,7 @@
     "next-auth": "^5.0.0-beta.15",
     "next-themes": "^0.2.1",
     "nodemailer": "^7.0.13",
+    "pdfjs-dist": "^6.0.227",
     "react": "^18",
     "react-dom": "^18",
     "react-hook-form": "^7.51.0",

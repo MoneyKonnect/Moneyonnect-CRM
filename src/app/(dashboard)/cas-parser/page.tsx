@@ -2,7 +2,7 @@
 import { useState, useRef, useCallback } from "react";
 import { Upload, FileText, Download, Loader2, X, Eye, EyeOff, ChevronRight, AlertCircle, CheckCircle2, RefreshCw, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { parseCASPDF, ParsedCAS, Equity } from "@/lib/cas-parser";
+import { parseCASPDF, ParsedCAS } from "@/lib/cas-parser";
 import * as XLSX from "xlsx";
 
 function formatINR(n: number) {
@@ -45,7 +45,6 @@ export default function CASParserPage() {
     try {
       const data = await parseCASPDF(file, password);
       setResult(data);
-      // Init equity type toggles from auto-detection
       const types: Record<string, "DIRECT" | "PMS"> = {};
       data.equities.forEach((eq, i) => { types[`${i}`] = eq.holdingType; });
       setEquityTypes(types);
@@ -85,9 +84,10 @@ export default function CASParserPage() {
 
     // Sheet 2: Mutual Funds
     if (result.mutualFunds.length > 0) {
-      const mfHeaders = ["Folio No", "ISIN", "Scheme Name", "Registrar", "Units", "Avg Cost/Unit (₹)", "Total Cost (₹)", "NAV (₹)", "NAV Date", "Current Value (₹)", "Unrealised P&L (₹)"];
+      const mfHeaders = ["Folio No", "ISIN", "Scheme Name", "Plan Type", "Registrar", "First Purchase Date", "Units", "Avg Cost/Unit (₹)", "Total Cost (₹)", "NAV (₹)", "NAV Date", "Current Value (₹)", "Unrealised P&L (₹)"];
       const mfRows = result.mutualFunds.map(m => [
-        m.folioNo, m.isin, m.schemeName, m.registrar,
+        m.folioNo, m.isin, m.schemeName, m.planType, m.registrar,
+        m.firstPurchaseDate || "",
         m.units, m.avgCostPerUnit || "", m.totalCost || "",
         m.nav, m.navDate, m.currentValue, m.unrealisedPnL || "",
       ]);
@@ -167,7 +167,6 @@ export default function CASParserPage() {
       {/* Upload zone */}
       {!result && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Drop zone */}
           <div
             onDragOver={e => { e.preventDefault(); setDragging(true); }}
             onDragLeave={() => setDragging(false)}
@@ -195,7 +194,6 @@ export default function CASParserPage() {
             )}
           </div>
 
-          {/* Password + parse */}
           <div className="rounded-2xl border border-border bg-card p-6 space-y-5">
             <div>
               <h3 className="text-sm font-semibold text-foreground mb-1">PDF Password</h3>
@@ -244,7 +242,6 @@ export default function CASParserPage() {
       {/* Results */}
       {result && (
         <div className="space-y-4">
-          {/* Reset button */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="px-3 py-1 rounded-full text-xs font-semibold bg-brand-500/10 text-brand-400">
@@ -280,7 +277,6 @@ export default function CASParserPage() {
             ))}
           </div>
 
-          {/* Tab content */}
           <div className="rounded-2xl border border-border bg-card overflow-hidden">
 
             {/* Summary */}
@@ -303,6 +299,25 @@ export default function CASParserPage() {
                 {result.investor.statementPeriod && (
                   <p className="text-xs text-muted-foreground">Statement period: {result.investor.statementPeriod}</p>
                 )}
+                {/* Direct vs Regular breakdown */}
+                <div className="flex gap-4">
+                  <div className="rounded-xl border border-border p-4 flex-1">
+                    <p className="text-xs text-muted-foreground mb-2">MF Plan Breakdown</p>
+                    <div className="flex gap-3">
+                      <div>
+                        <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400">Direct</span>
+                        <p className="text-sm font-bold mt-1">{result.mutualFunds.filter(m => m.planType === "DIRECT").length} schemes</p>
+                        <p className="text-xs text-muted-foreground">{formatINR(result.mutualFunds.filter(m => m.planType === "DIRECT").reduce((s, m) => s + m.currentValue, 0))}</p>
+                      </div>
+                      <div className="w-px bg-border" />
+                      <div>
+                        <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-500/10 text-orange-400">Regular</span>
+                        <p className="text-sm font-bold mt-1">{result.mutualFunds.filter(m => m.planType === "REGULAR").length} schemes</p>
+                        <p className="text-xs text-muted-foreground">{formatINR(result.mutualFunds.filter(m => m.planType === "REGULAR").reduce((s, m) => s + m.currentValue, 0))}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
                 {result.portfolioTrend.length > 0 && (
                   <div>
                     <h3 className="text-sm font-semibold mb-3">Portfolio Value Trend</h3>
@@ -333,25 +348,52 @@ export default function CASParserPage() {
                   <div className="p-10 text-center text-muted-foreground text-sm">No mutual funds found in this statement.</div>
                 ) : (
                   <table className="w-full text-xs">
-                    <thead><tr className="border-b border-border bg-muted/30">{["Folio No", "Scheme Name", "ISIN", "Registrar", "Units", "NAV (₹)", "NAV Date", "Current Value", "P&L"].map(h => <th key={h} className="text-left py-3 px-4 text-muted-foreground font-medium whitespace-nowrap">{h}</th>)}</tr></thead>
+                    <thead>
+                      <tr className="border-b border-border bg-muted/30">
+                        {["Folio No", "Scheme Name", "Plan", "Registrar", "First Purchase", "Units", "NAV (₹)", "NAV Date", "Current Value", "P&L"].map(h => (
+                          <th key={h} className="text-left py-3 px-4 text-muted-foreground font-medium whitespace-nowrap">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
                     <tbody>
                       {result.mutualFunds.map((m, i) => (
                         <tr key={i} className="border-b border-border/50 hover:bg-accent/20">
                           <td className="py-2.5 px-4 font-mono text-muted-foreground">{m.folioNo}</td>
-                          <td className="py-2.5 px-4 max-w-[200px]"><div className="truncate" title={m.schemeName}>{m.schemeName}</div></td>
-                          <td className="py-2.5 px-4 font-mono text-muted-foreground">{m.isin}</td>
-                          <td className="py-2.5 px-4"><span className={cn("px-2 py-0.5 rounded-full text-2xs font-medium", m.registrar === "CAMS" ? "bg-blue-500/10 text-blue-400" : "bg-purple-500/10 text-purple-400")}>{m.registrar}</span></td>
+                          <td className="py-2.5 px-4 max-w-[200px]">
+                            <div className="truncate" title={m.schemeName}>{m.schemeName}</div>
+                          </td>
+                          <td className="py-2.5 px-4">
+                            <span className={cn("px-2 py-0.5 rounded-full text-2xs font-semibold",
+                              m.planType === "DIRECT"
+                                ? "bg-emerald-500/10 text-emerald-400"
+                                : "bg-orange-500/10 text-orange-400"
+                            )}>
+                              {m.planType === "DIRECT" ? "Direct" : "Regular"}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-4">
+                            <span className={cn("px-2 py-0.5 rounded-full text-2xs font-medium",
+                              m.registrar === "CAMS" ? "bg-blue-500/10 text-blue-400" : "bg-purple-500/10 text-purple-400"
+                            )}>
+                              {m.registrar}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-4 text-muted-foreground whitespace-nowrap">
+                            {m.firstPurchaseDate || "—"}
+                          </td>
                           <td className="py-2.5 px-4 text-right">{m.units.toLocaleString("en-IN", { maximumFractionDigits: 3 })}</td>
                           <td className="py-2.5 px-4 text-right">{m.nav.toLocaleString("en-IN", { maximumFractionDigits: 4 })}</td>
                           <td className="py-2.5 px-4 text-muted-foreground">{m.navDate}</td>
                           <td className="py-2.5 px-4 text-right font-semibold">{formatINR(m.currentValue)}</td>
-                          <td className={cn("py-2.5 px-4 text-right", m.unrealisedPnL && m.unrealisedPnL >= 0 ? "text-emerald-400" : "text-red-400")}>{m.unrealisedPnL ? formatINR(m.unrealisedPnL) : "—"}</td>
+                          <td className={cn("py-2.5 px-4 text-right", m.unrealisedPnL && m.unrealisedPnL >= 0 ? "text-emerald-400" : "text-red-400")}>
+                            {m.unrealisedPnL ? formatINR(m.unrealisedPnL) : "—"}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                     <tfoot>
                       <tr className="border-t border-border bg-muted/20">
-                        <td colSpan={7} className="py-2.5 px-4 font-semibold text-right">Total</td>
+                        <td colSpan={8} className="py-2.5 px-4 font-semibold text-right">Total</td>
                         <td className="py-2.5 px-4 text-right font-bold text-brand-400">{formatINR(result.mutualFunds.reduce((s, m) => s + m.currentValue, 0))}</td>
                         <td className="py-2.5 px-4 text-right font-semibold text-emerald-400">{formatINR(result.mutualFunds.reduce((s, m) => s + (m.unrealisedPnL || 0), 0))}</td>
                       </tr>
@@ -368,7 +410,13 @@ export default function CASParserPage() {
                   <div className="p-10 text-center text-muted-foreground text-sm">No equity holdings found in this statement.</div>
                 ) : (
                   <table className="w-full text-xs">
-                    <thead><tr className="border-b border-border bg-muted/30">{["ISIN", "Symbol", "Company", "Qty", "Price (₹)", "Value", "Depository", "DP / Broker", "Type"].map(h => <th key={h} className="text-left py-3 px-4 text-muted-foreground font-medium whitespace-nowrap">{h}</th>)}</tr></thead>
+                    <thead>
+                      <tr className="border-b border-border bg-muted/30">
+                        {["ISIN", "Symbol", "Company", "Qty", "Price (₹)", "Value", "Depository", "DP / Broker", "Type"].map(h => (
+                          <th key={h} className="text-left py-3 px-4 text-muted-foreground font-medium whitespace-nowrap">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
                     <tbody>
                       {result.equities.map((eq, i) => (
                         <tr key={i} className="border-b border-border/50 hover:bg-accent/20">
@@ -378,7 +426,11 @@ export default function CASParserPage() {
                           <td className="py-2.5 px-4 text-right">{eq.quantity.toLocaleString("en-IN")}</td>
                           <td className="py-2.5 px-4 text-right">{eq.marketPrice ? eq.marketPrice.toLocaleString("en-IN", { maximumFractionDigits: 2 }) : "—"}</td>
                           <td className="py-2.5 px-4 text-right font-semibold">{formatINR(eq.value)}</td>
-                          <td className="py-2.5 px-4"><span className={cn("px-2 py-0.5 rounded-full text-2xs font-medium", eq.accountType === "NSDL" ? "bg-emerald-500/10 text-emerald-400" : "bg-cyan-500/10 text-cyan-400")}>{eq.accountType}</span></td>
+                          <td className="py-2.5 px-4">
+                            <span className={cn("px-2 py-0.5 rounded-full text-2xs font-medium",
+                              eq.accountType === "NSDL" ? "bg-emerald-500/10 text-emerald-400" : "bg-cyan-500/10 text-cyan-400"
+                            )}>{eq.accountType}</span>
+                          </td>
                           <td className="py-2.5 px-4 text-muted-foreground max-w-[140px]"><div className="truncate" title={eq.dpName}>{eq.dpName}</div></td>
                           <td className="py-2.5 px-4">
                             <button
@@ -414,7 +466,13 @@ export default function CASParserPage() {
                   <div className="p-10 text-center text-muted-foreground text-sm">No bonds found in this statement.</div>
                 ) : (
                   <table className="w-full text-xs">
-                    <thead><tr className="border-b border-border bg-muted/30">{["ISIN", "Company", "Coupon Rate", "Frequency", "Maturity Date", "No. of Bonds", "Face Value/Bond", "Market Price/Bond", "Value"].map(h => <th key={h} className="text-left py-3 px-4 text-muted-foreground font-medium whitespace-nowrap">{h}</th>)}</tr></thead>
+                    <thead>
+                      <tr className="border-b border-border bg-muted/30">
+                        {["ISIN", "Company", "Coupon Rate", "Frequency", "Maturity Date", "No. of Bonds", "Face Value/Bond", "Market Price/Bond", "Value"].map(h => (
+                          <th key={h} className="text-left py-3 px-4 text-muted-foreground font-medium whitespace-nowrap">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
                     <tbody>
                       {result.bonds.map((b, i) => (
                         <tr key={i} className="border-b border-border/50 hover:bg-accent/20">
@@ -448,7 +506,13 @@ export default function CASParserPage() {
                   <div className="p-10 text-center text-muted-foreground text-sm">No AIF holdings found in this statement.</div>
                 ) : (
                   <table className="w-full text-xs">
-                    <thead><tr className="border-b border-border bg-muted/30">{["ISIN", "Fund Name", "Units", "NAV (₹)", "Value", "Manager / DP"].map(h => <th key={h} className="text-left py-3 px-4 text-muted-foreground font-medium whitespace-nowrap">{h}</th>)}</tr></thead>
+                    <thead>
+                      <tr className="border-b border-border bg-muted/30">
+                        {["ISIN", "Fund Name", "Units", "NAV (₹)", "Value", "Manager / DP"].map(h => (
+                          <th key={h} className="text-left py-3 px-4 text-muted-foreground font-medium whitespace-nowrap">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
                     <tbody>
                       {result.aif.map((a, i) => (
                         <tr key={i} className="border-b border-border/50 hover:bg-accent/20">

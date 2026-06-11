@@ -11,12 +11,15 @@ function formatINR(n: number) {
   return `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 }
 
-type Tab = "summary" | "mf" | "equities" | "bonds" | "aif";
+function p(s: any) { return parseFloat(String(s || "0").replace(/,/g, "")) || 0; }
 
-interface MF { folio: string; amc: string; scheme: string; isin: string; open: number; close: number; nav: number; value: number; plan: string; }
-interface Equity { isin: string; symbol: string; company: string; quantity: number; price: number; value: number; dp: string; type: string; holding: "DIRECT" | "PMS"; }
+type Tab = "summary" | "mf" | "equities" | "bonds" | "aif";
+interface MF { folio: string; amc: string; scheme: string; isin: string; close: number; nav: number; value: number; plan: "DIRECT" | "REGULAR"; avgCost: number; totalCost: number; pnl: number; }
+interface Equity { key: string; isin: string; symbol: string; company: string; quantity: number; price: number; value: number; dp: string; type: string; holding: "DIRECT" | "PMS"; }
 interface Bond { isin: string; company: string; quantity: number; faceValue: number; value: number; dp: string; }
 interface AIF { isin: string; description: string; units: number; nav: number; value: number; dp: string; }
+
+const PMS_BROKERS = ["AXIS SECURITIES","AMBIT CAPITAL","360 ONE","ASK ","MOTILAL OSWAL","EDELWEISS","NUVAMA","WHITE OAK","ABAKKUS","MARCELLUS","CARNELIAN"];
 
 export default function CASParserPage() {
   const [dragging, setDragging] = useState(false);
@@ -54,14 +57,7 @@ export default function CASParserPage() {
       if (!res.ok) throw new Error(data.error || "Parse failed");
       setRaw(data);
       setActiveTab("summary");
-      // init equity types
-      const types: Record<string, "DIRECT" | "PMS"> = {};
-      (data.demat_accounts || []).forEach((acct: any) => {
-        (acct.equities || []).forEach((_: any, i: number) => {
-          types[`${acct.dp_id}-${i}`] = "DIRECT";
-        });
-      });
-      setEquityTypes(types);
+      setEquityTypes({});
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -69,86 +65,114 @@ export default function CASParserPage() {
     }
   };
 
-  // Flatten data from casparser JSON structure
+  // Build flat lists from casparser structure
+  // Structure: { accounts: [{ name, type, mutual_funds: [], equities: [], bonds: [] }], investor_info, statement_period, file_type }
   const mfList: MF[] = [];
   const equityList: Equity[] = [];
   const bondList: Bond[] = [];
   const aifList: AIF[] = [];
 
   if (raw) {
-    // Mutual funds from folios
-    (raw.folios || []).forEach((folio: any) => {
-      (folio.schemes || []).forEach((scheme: any) => {
-        mfList.push({
-          folio: folio.folio,
-          amc: folio.amc,
-          scheme: scheme.scheme,
-          isin: scheme.isin || "",
-          open: scheme.open || 0,
-          close: scheme.close || 0,
-          nav: scheme.nav || 0,
-          value: scheme.valuation?.value || 0,
-          plan: /direct/i.test(scheme.scheme) ? "DIRECT" : "REGULAR",
-        });
+    let eqIdx = 0;
+    (raw.accounts || []).forEach((acct: any) => {
+      const dp = acct.name || "";
+      const acctType = (acct.type || "").toLowerCase().includes("cdsl") ? "CDSL" : "NSDL";
+      const isPMS = PMS_BROKERS.some(b => dp.toUpperCase().includes(b));
+
+      // MF + AIF both come in mutual_funds array
+      (acct.mutual_funds || []).forEach((mf: any) => {
+        const val = p(mf.value);
+        const nav = p(mf.nav);
+        const balance = p(mf.balance);
+        const name = mf.name || "";
+        // Detect AIF: no amfi code + name contains AIF keywords
+        const isAIF = !mf.amfi && (
+          /restricted transferability|category\s+(ii|iii)|aif|class\s+[abc]/i.test(name)
+        );
+        if (isAIF) {
+          aifList.push({ isin: mf.isin || "", description: name, units: balance, nav, value: val, dp });
+        } else {
+          mfList.push({
+            folio: mf.folio || "",
+            amc: dp,
+            scheme: name,
+            isin: mf.isin || "",
+            close: balance,
+            nav,
+            value: val,
+            plan: /direct/i.test(name) ? "DIRECT" : "REGULAR",
+            avgCost: p(mf.avg_cost),
+            totalCost: p(mf.total_cost),
+            pnl: p(mf.pnl),
+          });
+        }
       });
-    });
 
-    // Equities, bonds, AIFs from demat accounts
-    (raw.demat_accounts || []).forEach((acct: any) => {
-      const dp = acct.dp_name || acct.dp_id || "";
-      const PMS_BROKERS = ["AXIS SECURITIES", "AMBIT CAPITAL", "360 ONE", "ASK", "MOTILAL OSWAL", "EDELWEISS", "NUVAMA", "WHITE OAK", "ABAKKUS", "MARCELLUS"];
-      const defaultHolding: "DIRECT" | "PMS" = PMS_BROKERS.some(b => dp.toUpperCase().includes(b)) ? "PMS" : "DIRECT";
-
-      (acct.equities || []).forEach((eq: any, i: number) => {
-        const key = `${acct.dp_id}-${i}`;
+      // Equities
+      (acct.equities || []).forEach((eq: any) => {
+        const key = `eq-${eqIdx}`;
+        const defaultHolding: "DIRECT" | "PMS" = isPMS ? "PMS" : "DIRECT";
         equityList.push({
-          isin: eq.isin, symbol: eq.symbol || "", company: eq.name || eq.description || "",
-          quantity: eq.quantity || eq.free_balance || 0,
-          price: eq.market_price || 0, value: eq.value || 0,
-          dp, type: acct.depository || "NSDL",
+          key,
+          isin: eq.isin || "",
+          symbol: eq.symbol || "",
+          company: eq.name || "",
+          quantity: p(eq.num_shares || eq.quantity),
+          price: p(eq.price),
+          value: p(eq.value),
+          dp, type: acctType,
           holding: equityTypes[key] || defaultHolding,
         });
+        eqIdx++;
       });
 
+      // Bonds
       (acct.bonds || []).forEach((b: any) => {
-        bondList.push({ isin: b.isin, company: b.name || b.description || "", quantity: b.quantity || 0, faceValue: b.face_value || 0, value: b.value || 0, dp });
-      });
-
-      (acct.aif || []).forEach((a: any) => {
-        aifList.push({ isin: a.isin, description: a.name || a.description || "", units: a.units || 0, nav: a.nav || 0, value: a.value || 0, dp });
+        bondList.push({
+          isin: b.isin || "",
+          company: b.name || "",
+          quantity: p(b.num_bonds || b.quantity),
+          faceValue: p(b.face_value),
+          value: p(b.value),
+          dp,
+        });
       });
     });
   }
 
   const totalMF = mfList.reduce((s, m) => s + m.value, 0);
-  const totalEqDirect = equityList.filter(e => e.holding === "DIRECT").reduce((s, e) => s + e.value, 0);
-  const totalEqPMS = equityList.filter(e => e.holding === "PMS").reduce((s, e) => s + e.value, 0);
+  const directEquities = equityList.filter(e => (equityTypes[e.key] || e.holding) === "DIRECT");
+  const pmsEquities = equityList.filter(e => (equityTypes[e.key] || e.holding) === "PMS");
+  const totalEqDirect = directEquities.reduce((s, e) => s + e.value, 0);
+  const totalEqPMS = pmsEquities.reduce((s, e) => s + e.value, 0);
   const totalBonds = bondList.reduce((s, b) => s + b.value, 0);
   const totalAIF = aifList.reduce((s, a) => s + a.value, 0);
 
   const handleExport = () => {
     if (!raw) return;
     const wb = XLSX.utils.book_new();
-    const summary = [
+    const inv = raw.investor_info || {};
+    const sp = raw.statement_period || {};
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
       ["CAS Parser — MoneyKonnect CRM"], [],
-      ["Investor", raw.investor?.name || ""], ["PAN", raw.investor?.pan || ""],
-      ["Statement Period", raw.statement_period ? `${raw.statement_period.from} to ${raw.statement_period.to}` : ""],
+      ["Investor", inv.name || ""], ["PAN", inv.pan || ""],
+      ["Statement Period", sp.from ? `${sp.from} to ${sp.to}` : ""],
       [], ["Asset Class", "Value (₹)"],
       ["Mutual Funds", totalMF], ["Equities (Direct)", totalEqDirect],
       ["Equities (PMS)", totalEqPMS], ["Bonds", totalBonds], ["AIF", totalAIF],
-    ];
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summary), "Summary");
+    ]), "Summary");
+
     if (mfList.length > 0) {
-      const h = ["Folio", "AMC", "Scheme", "ISIN", "Plan", "Open Units", "Close Units", "NAV (₹)", "Value (₹)"];
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([h, ...mfList.map(m => [m.folio, m.amc, m.scheme, m.isin, m.plan, m.open, m.close, m.nav, m.value])]), "Mutual Funds");
+      const h = ["AMC/DP", "Scheme", "ISIN", "Folio", "Plan", "Units", "NAV (₹)", "Avg Cost (₹)", "Total Cost (₹)", "Value (₹)", "P&L (₹)"];
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([h, ...mfList.map(m => [m.amc, m.scheme, m.isin, m.folio, m.plan, m.close, m.nav, m.avgCost || "", m.totalCost || "", m.value, m.pnl || ""])]), "Mutual Funds");
     }
-    if (equityList.filter(e => e.holding === "DIRECT").length > 0) {
+    if (directEquities.length > 0) {
       const h = ["ISIN", "Symbol", "Company", "Quantity", "Price (₹)", "Value (₹)", "Depository", "DP"];
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([h, ...equityList.filter(e => e.holding === "DIRECT").map(e => [e.isin, e.symbol, e.company, e.quantity, e.price, e.value, e.type, e.dp])]), "Equities - Direct");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([h, ...directEquities.map(e => [e.isin, e.symbol, e.company, e.quantity, e.price, e.value, e.type, e.dp])]), "Equities - Direct");
     }
-    if (equityList.filter(e => e.holding === "PMS").length > 0) {
+    if (pmsEquities.length > 0) {
       const h = ["ISIN", "Symbol", "Company", "Quantity", "Price (₹)", "Value (₹)", "Depository", "DP"];
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([h, ...equityList.filter(e => e.holding === "PMS").map(e => [e.isin, e.symbol, e.company, e.quantity, e.price, e.value, e.type, e.dp])]), "Equities - PMS");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([h, ...pmsEquities.map(e => [e.isin, e.symbol, e.company, e.quantity, e.price, e.value, e.type, e.dp])]), "Equities - PMS");
     }
     if (bondList.length > 0) {
       const h = ["ISIN", "Company", "Quantity", "Face Value (₹)", "Value (₹)", "DP"];
@@ -158,7 +182,7 @@ export default function CASParserPage() {
       const h = ["ISIN", "Fund Name", "Units", "NAV (₹)", "Value (₹)", "DP"];
       XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([h, ...aifList.map(a => [a.isin, a.description, a.units, a.nav, a.value, a.dp])]), "AIF");
     }
-    const name = raw.investor?.name?.replace(/\s+/g, "_") || "CAS";
+    const name = (inv.name || "CAS").replace(/\s+/g, "_");
     XLSX.writeFile(wb, `${name}_CAS_${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
@@ -252,7 +276,9 @@ export default function CASParserPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="px-3 py-1 rounded-full text-xs font-semibold bg-brand-500/10 text-brand-400">{raw.file_type || "CAS"}</div>
-              <span className="text-sm text-muted-foreground">{raw.investor?.name} {raw.investor?.pan && `· ${raw.investor.pan}`}</span>
+              <span className="text-sm text-muted-foreground">
+                {raw.investor_info?.name} {raw.investor_info?.pan && `· ${raw.investor_info.pan}`}
+              </span>
             </div>
             <button onClick={() => { setRaw(null); setFile(null); setPassword(""); setError(null); }}
               className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-lg hover:bg-accent transition-all">
@@ -272,13 +298,14 @@ export default function CASParserPage() {
           </div>
 
           <div className="rounded-2xl border border-border bg-card overflow-hidden">
+
             {activeTab === "summary" && (
               <div className="p-6 space-y-6">
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   {[
                     { label: "Mutual Funds", value: formatINR(totalMF), count: mfList.length + " schemes" },
-                    { label: "Equities (Direct)", value: formatINR(totalEqDirect), count: equityList.filter(e => e.holding === "DIRECT").length + " stocks" },
-                    { label: "Equities (PMS)", value: formatINR(totalEqPMS), count: equityList.filter(e => e.holding === "PMS").length + " stocks" },
+                    { label: "Equities (Direct)", value: formatINR(totalEqDirect), count: directEquities.length + " stocks" },
+                    { label: "Equities (PMS)", value: formatINR(totalEqPMS), count: pmsEquities.length + " stocks" },
                     { label: "Bonds + AIF", value: formatINR(totalBonds + totalAIF), count: (bondList.length + aifList.length) + " instruments" },
                   ].map(s => (
                     <div key={s.label} className="rounded-xl border border-border p-4">
@@ -288,7 +315,7 @@ export default function CASParserPage() {
                     </div>
                   ))}
                 </div>
-                {raw.statement_period && <p className="text-xs text-muted-foreground">Statement period: {raw.statement_period.from} to {raw.statement_period.to}</p>}
+                {raw.statement_period?.from && <p className="text-xs text-muted-foreground">Statement period: {raw.statement_period.from} to {raw.statement_period.to}</p>}
                 <div className="rounded-xl border border-border p-4">
                   <p className="text-xs text-muted-foreground mb-3">MF Plan Breakdown</p>
                   <div className="flex gap-6">
@@ -312,26 +339,27 @@ export default function CASParserPage() {
               <div className="overflow-x-auto">
                 {mfList.length === 0 ? <div className="p-10 text-center text-muted-foreground text-sm">No mutual funds found.</div> : (
                   <table className="w-full text-xs">
-                    <thead><tr className="border-b border-border bg-muted/30">{["Folio", "AMC", "Scheme", "Plan", "Open Units", "Close Units", "NAV (₹)", "Value"].map(h => <th key={h} className="text-left py-3 px-4 text-muted-foreground font-medium whitespace-nowrap">{h}</th>)}</tr></thead>
+                    <thead><tr className="border-b border-border bg-muted/30">{["AMC/DP", "Scheme", "ISIN", "Plan", "Units", "NAV (₹)", "Avg Cost", "Value", "P&L"].map(h => <th key={h} className="text-left py-3 px-4 text-muted-foreground font-medium whitespace-nowrap">{h}</th>)}</tr></thead>
                     <tbody>
                       {mfList.map((m, i) => (
                         <tr key={i} className="border-b border-border/50 hover:bg-accent/20">
-                          <td className="py-2.5 px-4 font-mono text-muted-foreground">{m.folio}</td>
-                          <td className="py-2.5 px-4 text-muted-foreground">{m.amc}</td>
+                          <td className="py-2.5 px-4 text-muted-foreground max-w-[120px]"><div className="truncate" title={m.amc}>{m.amc}</div></td>
                           <td className="py-2.5 px-4 max-w-[220px]"><div className="truncate" title={m.scheme}>{m.scheme}</div></td>
+                          <td className="py-2.5 px-4 font-mono text-muted-foreground text-2xs">{m.isin}</td>
                           <td className="py-2.5 px-4">
                             <span className={cn("px-2 py-0.5 rounded-full text-2xs font-semibold", m.plan === "DIRECT" ? "bg-emerald-500/10 text-emerald-400" : "bg-orange-500/10 text-orange-400")}>
                               {m.plan === "DIRECT" ? "Direct" : "Regular"}
                             </span>
                           </td>
-                          <td className="py-2.5 px-4 text-right">{m.open.toLocaleString("en-IN", { maximumFractionDigits: 3 })}</td>
                           <td className="py-2.5 px-4 text-right">{m.close.toLocaleString("en-IN", { maximumFractionDigits: 3 })}</td>
                           <td className="py-2.5 px-4 text-right">{m.nav.toLocaleString("en-IN", { maximumFractionDigits: 4 })}</td>
+                          <td className="py-2.5 px-4 text-right">{m.avgCost ? formatINR(m.avgCost) : "—"}</td>
                           <td className="py-2.5 px-4 text-right font-semibold">{formatINR(m.value)}</td>
+                          <td className={cn("py-2.5 px-4 text-right", m.pnl >= 0 ? "text-emerald-400" : "text-red-400")}>{m.pnl ? formatINR(m.pnl) : "—"}</td>
                         </tr>
                       ))}
                     </tbody>
-                    <tfoot><tr className="border-t border-border bg-muted/20"><td colSpan={7} className="py-2.5 px-4 font-semibold text-right">Total</td><td className="py-2.5 px-4 text-right font-bold text-brand-400">{formatINR(totalMF)}</td></tr></tfoot>
+                    <tfoot><tr className="border-t border-border bg-muted/20"><td colSpan={7} className="py-2.5 px-4 font-semibold text-right">Total</td><td className="py-2.5 px-4 text-right font-bold text-brand-400">{formatINR(totalMF)}</td><td /></tr></tfoot>
                   </table>
                 )}
               </div>
@@ -341,7 +369,7 @@ export default function CASParserPage() {
               <div className="overflow-x-auto">
                 {equityList.length === 0 ? <div className="p-10 text-center text-muted-foreground text-sm">No equities found.</div> : (
                   <table className="w-full text-xs">
-                    <thead><tr className="border-b border-border bg-muted/30">{["ISIN", "Symbol", "Company", "Qty", "Price (₹)", "Value", "Type", "DP", "Holding"].map(h => <th key={h} className="text-left py-3 px-4 text-muted-foreground font-medium whitespace-nowrap">{h}</th>)}</tr></thead>
+                    <thead><tr className="border-b border-border bg-muted/30">{["ISIN", "Symbol", "Company", "Qty", "Price (₹)", "Value", "Depo", "DP", "Type"].map(h => <th key={h} className="text-left py-3 px-4 text-muted-foreground font-medium whitespace-nowrap">{h}</th>)}</tr></thead>
                     <tbody>
                       {equityList.map((eq, i) => (
                         <tr key={i} className="border-b border-border/50 hover:bg-accent/20">
@@ -354,10 +382,10 @@ export default function CASParserPage() {
                           <td className="py-2.5 px-4"><span className={cn("px-2 py-0.5 rounded-full text-2xs font-medium", eq.type === "NSDL" ? "bg-emerald-500/10 text-emerald-400" : "bg-cyan-500/10 text-cyan-400")}>{eq.type}</span></td>
                           <td className="py-2.5 px-4 text-muted-foreground max-w-[120px]"><div className="truncate" title={eq.dp}>{eq.dp}</div></td>
                           <td className="py-2.5 px-4">
-                            <button onClick={() => setEquityTypes(prev => ({ ...prev, [`${i}`]: prev[`${i}`] === "PMS" ? "DIRECT" : "PMS" }))}
+                            <button onClick={() => setEquityTypes(prev => ({ ...prev, [eq.key]: (prev[eq.key] || eq.holding) === "PMS" ? "DIRECT" : "PMS" }))}
                               className={cn("flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-semibold cursor-pointer border",
-                                (equityTypes[`${i}`] || eq.holding) === "PMS" ? "bg-amber-500/10 text-amber-400 border-amber-500/20" : "bg-blue-500/10 text-blue-400 border-blue-500/20")}>
-                              <Tag className="h-2.5 w-2.5" />{equityTypes[`${i}`] || eq.holding}
+                                (equityTypes[eq.key] || eq.holding) === "PMS" ? "bg-amber-500/10 text-amber-400 border-amber-500/20" : "bg-blue-500/10 text-blue-400 border-blue-500/20")}>
+                              <Tag className="h-2.5 w-2.5" />{equityTypes[eq.key] || eq.holding}
                             </button>
                           </td>
                         </tr>
@@ -414,6 +442,7 @@ export default function CASParserPage() {
                 )}
               </div>
             )}
+
           </div>
         </div>
       )}

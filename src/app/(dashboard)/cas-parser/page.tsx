@@ -90,8 +90,22 @@ export default function CASParserPage() {
         const isAIF = !mf.amfi && !hasFolio && (
           /restricted transferability|category\s+(ii|iii)|\bAIF\b|class\s+[abc]/i.test(name)
         ) && !/ETF|exchange traded|silver|gold/i.test(name);
-        // Skip demat ETF holdings (no folio, not AIF) — e.g. NIPPON ETF, Gold ETF
-        if (!hasFolio && !isAIF) return;
+        // Demat ETF holdings (no folio, not AIF) — add to equities as ETF
+        if (!hasFolio && !isAIF) {
+          equityList.push({
+            key: `etf-${mfList.length}-${aifList.length}`,
+            isin: mf.isin || "",
+            symbol: "",
+            company: name,
+            quantity: balance,
+            price: nav,
+            value: val,
+            dp: dp,
+            type: acctType,
+            holding: "DIRECT",
+          });
+          return;
+        }
         if (isAIF) {
           aifList.push({ isin: mf.isin || "", description: name, units: balance, nav, value: val, dp });
         } else {

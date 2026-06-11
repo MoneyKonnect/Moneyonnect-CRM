@@ -174,7 +174,7 @@ function parseNSDLEquities(text: string): Equity[] {
     const line = lines[k];
 
     // Detect demat account header — "NSDL Demat Account" followed by broker name on next line
-    if (line === "NSDL Demat Account") {
+    if (line.startsWith("NSDL Demat Account")) {
       // Next non-empty line that is all caps = broker name
       for (let j=k+1; j<Math.min(k+5,lines.length); j++) {
         const l = lines[j];
@@ -188,7 +188,7 @@ function parseNSDLEquities(text: string): Equity[] {
       continue;
     }
 
-    if (line === "Equity Shares") { inEquitySection = true; inMFSection = false; continue; }
+    if (line.startsWith("Equity Shares")) { inEquitySection = true; inMFSection = false; continue; }
     if (line === "Mutual Funds (M)" || line === "Mutual Fund Folios (F)") { inMFSection = true; inEquitySection = false; continue; }
     if (line.startsWith("Sub Total") || line.startsWith("Total")) { inEquitySection = false; continue; }
 
@@ -258,7 +258,7 @@ function parseCDSLEquities(text: string): Equity[] {
   for (let k=0; k<lines.length; k++) {
     const line = lines[k];
 
-    if (line === "CDSL Demat Account") {
+    if (line.startsWith("CDSL Demat Account")) {
       for (let j=k+1; j<Math.min(k+5,lines.length); j++) {
         const l = lines[j];
         if (l.match(/^[A-Z][A-Z0-9\s\.\&\-\(\)]+$/) && l.length>3 && !l.startsWith("DP ") && !l.startsWith("ACCOUNT")) {
@@ -270,7 +270,7 @@ function parseCDSLEquities(text: string): Equity[] {
       continue;
     }
 
-    if (line === "Equities (E)") { inEquitySection = true; continue; }
+    if (line.startsWith("Equities (E)")) { inEquitySection = true; continue; }
     if (line.startsWith("Sub Total") || line.startsWith("Total") || line === "Mutual Fund Folios (F)") {
       inEquitySection = false; continue;
     }

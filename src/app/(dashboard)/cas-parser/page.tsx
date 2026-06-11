@@ -85,10 +85,13 @@ export default function CASParserPage() {
         const nav = p(mf.nav);
         const balance = p(mf.balance);
         const name = mf.name || "";
-        // Detect AIF: no amfi code + name contains AIF keywords
+        const hasFolio = mf.folio !== null && mf.folio !== undefined && mf.folio !== "";
+        // AIF: no amfi, has AIF keywords in name
         const isAIF = !mf.amfi && (
           /restricted transferability|category\s+(ii|iii)|aif|class\s+[abc]/i.test(name)
         );
+        // Skip demat MF holdings (no folio, not AIF) — these are ETFs held in demat
+        if (!hasFolio && !isAIF) return;
         if (isAIF) {
           aifList.push({ isin: mf.isin || "", description: name, units: balance, nav, value: val, dp });
         } else {
@@ -278,6 +281,9 @@ export default function CASParserPage() {
               <div className="px-3 py-1 rounded-full text-xs font-semibold bg-brand-500/10 text-brand-400">{raw.file_type || "CAS"}</div>
               <span className="text-sm text-muted-foreground">
                 {raw.investor_info?.name} {raw.investor_info?.pan && `· ${raw.investor_info.pan}`}
+              </span>
+              <span className="text-sm font-bold text-foreground">
+                · {formatINR(totalMF + totalEqDirect + totalEqPMS + totalBonds + totalAIF)}
               </span>
             </div>
             <button onClick={() => { setRaw(null); setFile(null); setPassword(""); setError(null); }}

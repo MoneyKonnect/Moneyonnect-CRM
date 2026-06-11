@@ -87,9 +87,9 @@ export default function CASParserPage() {
         const name = mf.name || "";
         const hasFolio = mf.folio !== null && mf.folio !== undefined && mf.folio !== "";
         // AIF: no amfi, has AIF keywords in name
-        const isAIF = !mf.amfi && (
-          /restricted transferability|category\s+(ii|iii)|aif|class\s+[abc]/i.test(name)
-        );
+        const isAIF = !mf.amfi && !hasFolio && (
+          /restricted transferability|category\s+(ii|iii)|\bAIF\b|class\s+[abc]/i.test(name)
+        ) && !/ETF|exchange traded|silver|gold/i.test(name);
         // Skip demat ETF holdings (no folio, not AIF) — e.g. NIPPON ETF, Gold ETF
         if (!hasFolio && !isAIF) return;
         if (isAIF) {

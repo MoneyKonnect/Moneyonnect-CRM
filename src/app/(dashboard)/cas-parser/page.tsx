@@ -92,13 +92,8 @@ export default function CASParserPage() {
         );
         // Skip demat ETF holdings (no folio, not AIF) — e.g. NIPPON ETF, Gold ETF
         if (!hasFolio && !isAIF) return;
-        // casparser bug: when nav=0, value=NAV price not actual value
-        // actual value = balance * nav_price OR from ucc if it contains a number
-        const navPrice = nav === 0 ? val : nav;
-        const uccVal = (mf.ucc && /^[\d,]+\.\d+$/.test(String(mf.ucc).trim())) ? p(mf.ucc) : 0;
-        const actualVal = uccVal > 0 ? uccVal : (nav === 0 ? balance * navPrice : val);
         if (isAIF) {
-          aifList.push({ isin: mf.isin || "", description: name, units: balance, nav: navPrice, value: actualVal, dp });
+          aifList.push({ isin: mf.isin || "", description: name, units: balance, nav, value: val, dp });
         } else {
           mfList.push({
             folio: mf.folio || "",
@@ -106,8 +101,8 @@ export default function CASParserPage() {
             scheme: name,
             isin: mf.isin || "",
             close: balance,
-            nav: navPrice,
-            value: actualVal,
+            nav,
+            value: val,
             plan: /direct/i.test(name) ? "DIRECT" : "REGULAR",
             avgCost: p(mf.avg_cost),
             totalCost: p(mf.total_cost),

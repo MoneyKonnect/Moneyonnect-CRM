@@ -48,7 +48,7 @@ async function writeLeadToSheets(lead: any, ownerName: string) {
       "",
       ownerName,
       "",
-      new Date(lead.createdAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short", hour12: true }),
+      new Date(lead.createdAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short", hour12: true, timeZone: "Asia/Kolkata" }),
       "",
       lead.notes ?? "",
     ];

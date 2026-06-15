@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { clientSchema, type ClientInput } from "@/lib/validations/client";
 import { revalidatePath } from "next/cache";
+import { getOrgUserIds } from "@/lib/org";
 
 async function logAudit(userId: string, action: string, entityType: string, entityId: string, entityName: string, oldValue: any, newValue: any) {
   try {
@@ -98,8 +99,9 @@ export async function getClient(clientId: string) {
   try {
     const session = await auth();
     if (!session?.user?.id) return null;
+    const orgUserIds = await getOrgUserIds();
     return db.client.findFirst({
-      where: { id: clientId, ownerId: session.user.id, deletedAt: null },
+      where: { id: clientId, ownerId: { in: orgUserIds }, deletedAt: null },
       include: {
         residency: true,
         documents: { orderBy: { createdAt: "desc" } },

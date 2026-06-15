@@ -3,6 +3,7 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { getOrgUserIds } from "@/lib/org";
 
 async function logAudit(userId: string, action: string, entityType: string, entityId: string, entityName: string, oldValue: any, newValue: any) {
   try { await db.auditLog.create({ data: { userId, action, entityType, entityId, entityName, oldValue, newValue } }); } catch {}
@@ -22,7 +23,8 @@ export async function createInvestment(clientId: string, data: {
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const userId = (session.user as any).id;
 
-    const client = await db.client.findFirst({ where: { id: clientId, ownerId: userId, deletedAt: null } });
+    const orgUserIds = await getOrgUserIds();
+    const client = await db.client.findFirst({ where: { id: clientId, ownerId: { in: orgUserIds }, deletedAt: null } });
     if (!client) return { success: false, error: "Client not found" };
 
     const investment = await db.investment.create({
@@ -61,11 +63,12 @@ export async function updateInvestment(investmentId: string, data: {
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const userId = (session.user as any).id;
 
+    const orgUserIds = await getOrgUserIds();
     const existing = await db.investment.findFirst({
       where: { id: investmentId },
       include: { client: { select: { ownerId: true } } },
     });
-    if (!existing || existing.client.ownerId !== userId) return { success: false, error: "Not found" };
+    if (!existing || !orgUserIds.includes(existing.client.ownerId)) return { success: false, error: "Not found" };
 
     const investment = await db.investment.update({
       where: { id: investmentId },
@@ -92,11 +95,12 @@ export async function deleteInvestment(investmentId: string) {
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const userId = (session.user as any).id;
 
+    const orgUserIds = await getOrgUserIds();
     const existing = await db.investment.findFirst({
       where: { id: investmentId },
       include: { client: { select: { ownerId: true, id: true } } },
     });
-    if (!existing || existing.client.ownerId !== userId) return { success: false, error: "Not found" };
+    if (!existing || !orgUserIds.includes(existing.client.ownerId)) return { success: false, error: "Not found" };
 
     await db.investment.delete({ where: { id: investmentId } });
     await recalculateClientAUM(existing.clientId);
@@ -133,7 +137,8 @@ export async function createGoal(clientId: string, data: {
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const userId = (session.user as any).id;
 
-    const client = await db.client.findFirst({ where: { id: clientId, ownerId: userId, deletedAt: null } });
+    const orgUserIds = await getOrgUserIds();
+    const client = await db.client.findFirst({ where: { id: clientId, ownerId: { in: orgUserIds }, deletedAt: null } });
     if (!client) return { success: false, error: "Client not found" };
 
     const goal = await db.financialGoal.create({
@@ -160,11 +165,12 @@ export async function updateGoal(goalId: string, data: { currentAmount?: string;
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const userId = (session.user as any).id;
 
+    const orgUserIds = await getOrgUserIds();
     const existing = await db.financialGoal.findFirst({
       where: { id: goalId },
       include: { client: { select: { ownerId: true } } },
     });
-    if (!existing || existing.client.ownerId !== userId) return { success: false, error: "Not found" };
+    if (!existing || !orgUserIds.includes(existing.client.ownerId)) return { success: false, error: "Not found" };
 
     const goal = await db.financialGoal.update({
       where: { id: goalId },
@@ -187,11 +193,12 @@ export async function deleteGoal(goalId: string) {
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
     const userId = (session.user as any).id;
 
+    const orgUserIds = await getOrgUserIds();
     const existing = await db.financialGoal.findFirst({
       where: { id: goalId },
       include: { client: { select: { ownerId: true, id: true } } },
     });
-    if (!existing || existing.client.ownerId !== userId) return { success: false, error: "Not found" };
+    if (!existing || !orgUserIds.includes(existing.client.ownerId)) return { success: false, error: "Not found" };
 
     await db.financialGoal.delete({ where: { id: goalId } });
     revalidatePath(`/clients/${existing.clientId}`);

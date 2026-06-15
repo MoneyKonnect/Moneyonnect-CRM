@@ -3,6 +3,7 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { getOrgUserIds } from "@/lib/org";
 
 // ─── Family Groups ──────────────────────────────────────────────────────────
 
@@ -31,7 +32,8 @@ export async function updateFamilyGroup(id: string, data: any) {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "Unauthorized" };
 
-  const old = await db.familyGroup.findFirst({ where: { id, ownerId: session.user.id } });
+  const orgUserIds = await getOrgUserIds();
+  const old = await db.familyGroup.findFirst({ where: { id, ownerId: { in: orgUserIds } } });
   if (!old) return { success: false, error: "Not found" };
 
   const group = await db.familyGroup.update({ where: { id }, data });
@@ -44,7 +46,8 @@ export async function deleteFamilyGroup(id: string) {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "Unauthorized" };
 
-  const group = await db.familyGroup.findFirst({ where: { id, ownerId: session.user.id } });
+  const orgUserIds = await getOrgUserIds();
+  const group = await db.familyGroup.findFirst({ where: { id, ownerId: { in: orgUserIds } } });
   if (!group) return { success: false, error: "Not found" };
 
   await db.familyGroup.update({ where: { id }, data: { deletedAt: new Date() } });
@@ -58,9 +61,10 @@ export async function getFamilyGroupsForClient(clientId: string) {
   const session = await auth();
   if (!session?.user?.id) return [];
 
+  const orgUserIds = await getOrgUserIds();
   return await db.familyGroup.findMany({
     where: {
-      ownerId: session.user.id,
+      ownerId: { in: orgUserIds },
       deletedAt: null,
       OR: [
         { headClientId: clientId },
@@ -104,8 +108,9 @@ export async function createFamilyMember(familyGroupId: string, data: {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "Unauthorized" };
 
+  const orgUserIds = await getOrgUserIds();
   const group = await db.familyGroup.findFirst({
-    where: { id: familyGroupId, ownerId: session.user.id, deletedAt: null },
+    where: { id: familyGroupId, ownerId: { in: orgUserIds }, deletedAt: null },
   });
   if (!group) return { success: false, error: "Family group not found" };
 
@@ -136,11 +141,12 @@ export async function updateFamilyMember(memberId: string, data: any) {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "Unauthorized" };
 
+  const orgUserIds = await getOrgUserIds();
   const old = await db.familyMember.findFirst({
     where: { id: memberId },
     include: { familyGroup: true },
   });
-  if (!old || old.familyGroup.ownerId !== session.user.id) {
+  if (!old || !orgUserIds.includes(old.familyGroup.ownerId)) {
     return { success: false, error: "Not found" };
   }
 
@@ -167,11 +173,12 @@ export async function deleteFamilyMember(memberId: string, action: "REMOVE" | "M
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "Unauthorized" };
 
+  const orgUserIds = await getOrgUserIds();
   const member = await db.familyMember.findFirst({
     where: { id: memberId },
     include: { familyGroup: true },
   });
-  if (!member || member.familyGroup.ownerId !== session.user.id) {
+  if (!member || !orgUserIds.includes(member.familyGroup.ownerId)) {
     return { success: false, error: "Not found" };
   }
 
@@ -193,11 +200,12 @@ export async function convertMemberToLead(memberId: string) {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "Unauthorized" };
 
+  const orgUserIds = await getOrgUserIds();
   const member = await db.familyMember.findFirst({
     where: { id: memberId },
     include: { familyGroup: true },
   });
-  if (!member || member.familyGroup.ownerId !== session.user.id) {
+  if (!member || !orgUserIds.includes(member.familyGroup.ownerId)) {
     return { success: false, error: "Not found" };
   }
 
@@ -224,11 +232,12 @@ export async function convertMemberToClient(memberId: string) {
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "Unauthorized" };
 
+  const orgUserIds = await getOrgUserIds();
   const member = await db.familyMember.findFirst({
     where: { id: memberId },
     include: { familyGroup: true },
   });
-  if (!member || member.familyGroup.ownerId !== session.user.id) {
+  if (!member || !orgUserIds.includes(member.familyGroup.ownerId)) {
     return { success: false, error: "Not found" };
   }
   if (member.linkedClientId) {
@@ -413,9 +422,10 @@ export async function linkExistingClientToFamily(familyGroupId: string, clientId
   const session = await auth();
   if (!session?.user?.id) return { success: false, error: "Unauthorized" };
 
+  const orgUserIds = await getOrgUserIds();
   const [group, client] = await Promise.all([
-    db.familyGroup.findFirst({ where: { id: familyGroupId, ownerId: session.user.id, deletedAt: null } }),
-    db.client.findFirst({ where: { id: clientId, ownerId: session.user.id, deletedAt: null } }),
+    db.familyGroup.findFirst({ where: { id: familyGroupId, ownerId: { in: orgUserIds }, deletedAt: null } }),
+    db.client.findFirst({ where: { id: clientId, ownerId: { in: orgUserIds }, deletedAt: null } }),
   ]);
   if (!group) return { success: false, error: "Family group not found" };
   if (!client) return { success: false, error: "Client not found" };

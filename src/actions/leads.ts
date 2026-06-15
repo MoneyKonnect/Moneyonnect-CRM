@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { leadSchema, type LeadInput } from "@/lib/validations/lead";
 import { revalidatePath } from "next/cache";
+import { getOrgUserIds } from "@/lib/org";
 
 async function logAudit(userId: string, action: string, entityType: string, entityId: string, entityName: string, oldValue: any, newValue: any) {
   try { await db.auditLog.create({ data: { userId, action, entityType, entityId, entityName, oldValue, newValue } }); } catch {}
@@ -40,7 +41,8 @@ export async function updateLead(leadId: string, data: Partial<LeadInput>) {
   try {
     const session = await auth();
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
-    const existing = await db.lead.findFirst({ where: { id: leadId, ownerId: session.user.id, deletedAt: null } });
+    const orgUserIds = await getOrgUserIds();
+    const existing = await db.lead.findFirst({ where: { id: leadId, ownerId: { in: orgUserIds }, deletedAt: null } });
     if (!existing) return { success: false, error: "Lead not found" };
     const { estimatedValue, nextFollowUpAt, ...rest } = data;
     const lead = await db.lead.update({
@@ -66,7 +68,8 @@ export async function moveLeadStage(leadId: string, newStage: string) {
   try {
     const session = await auth();
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
-    const existing = await db.lead.findFirst({ where: { id: leadId, ownerId: session.user.id, deletedAt: null } });
+    const orgUserIds = await getOrgUserIds();
+    const existing = await db.lead.findFirst({ where: { id: leadId, ownerId: { in: orgUserIds }, deletedAt: null } });
     if (!existing) return { success: false, error: "Lead not found" };
     const [lead] = await Promise.all([
       db.lead.update({ where: { id: leadId }, data: { stage: newStage as any, lastActivityAt: new Date() } }),
@@ -85,7 +88,8 @@ export async function deleteLead(leadId: string) {
   try {
     const session = await auth();
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
-    const existing = await db.lead.findFirst({ where: { id: leadId, ownerId: session.user.id, deletedAt: null } });
+    const orgUserIds = await getOrgUserIds();
+    const existing = await db.lead.findFirst({ where: { id: leadId, ownerId: { in: orgUserIds }, deletedAt: null } });
     if (!existing) return { success: false, error: "Lead not found" };
     await db.lead.update({ where: { id: leadId }, data: { deletedAt: new Date() } });
     await logAudit(session.user.id, "DELETE", "lead", leadId, existing.fullName, existing, null);
@@ -100,7 +104,8 @@ export async function convertLeadToClient(leadId: string) {
   try {
     const session = await auth();
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
-    const lead = await db.lead.findFirst({ where: { id: leadId, ownerId: session.user.id, deletedAt: null } });
+    const orgUserIds = await getOrgUserIds();
+    const lead = await db.lead.findFirst({ where: { id: leadId, ownerId: { in: orgUserIds }, deletedAt: null } });
     if (!lead) return { success: false, error: "Lead not found" };
     if (lead.convertedClientId) return { success: false, error: "Already converted" };
     const client = await db.client.create({

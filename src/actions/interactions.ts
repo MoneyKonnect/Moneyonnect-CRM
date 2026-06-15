@@ -3,6 +3,7 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { getOrgUserIds } from "@/lib/org";
 
 export async function createInteraction(
   clientId: string,
@@ -16,8 +17,9 @@ export async function createInteraction(
     const session = await auth();
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
 
+    const orgUserIds = await getOrgUserIds();
     const client = await db.client.findFirst({
-      where: { id: clientId, ownerId: session.user.id, deletedAt: null },
+      where: { id: clientId, ownerId: { in: orgUserIds }, deletedAt: null },
     });
     if (!client) return { success: false, error: "Client not found" };
 

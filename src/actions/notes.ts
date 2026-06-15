@@ -3,12 +3,14 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { getOrgUserIds } from "@/lib/org";
 
 export async function createNote(clientId: string, content: string) {
   try {
     const session = await auth();
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
-    const client = await db.client.findFirst({ where: { id: clientId, ownerId: session.user.id, deletedAt: null } });
+    const orgUserIds = await getOrgUserIds();
+    const client = await db.client.findFirst({ where: { id: clientId, ownerId: { in: orgUserIds }, deletedAt: null } });
     if (!client) return { success: false, error: "Client not found" };
     if (!content.trim()) return { success: false, error: "Content required" };
     const note = await db.note.create({
@@ -25,7 +27,8 @@ export async function deleteNote(noteId: string) {
   try {
     const session = await auth();
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
-    const note = await db.note.findFirst({ where: { id: noteId, authorId: session.user.id } });
+    const orgUserIds = await getOrgUserIds();
+    const note = await db.note.findFirst({ where: { id: noteId, authorId: { in: orgUserIds } } });
     if (!note) return { success: false, error: "Note not found" };
     await db.note.delete({ where: { id: noteId } });
     revalidatePath(`/clients/${note.clientId}`);
@@ -39,7 +42,8 @@ export async function toggleNotePin(noteId: string) {
   try {
     const session = await auth();
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
-    const note = await db.note.findFirst({ where: { id: noteId, authorId: session.user.id } });
+    const orgUserIds = await getOrgUserIds();
+    const note = await db.note.findFirst({ where: { id: noteId, authorId: { in: orgUserIds } } });
     if (!note) return { success: false, error: "Note not found" };
     const updated = await db.note.update({
       where: { id: noteId },
@@ -56,7 +60,8 @@ export async function updateNote(noteId: string, content: string) {
   try {
     const session = await auth();
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
-    const note = await db.note.findFirst({ where: { id: noteId, authorId: session.user.id } });
+    const orgUserIds = await getOrgUserIds();
+    const note = await db.note.findFirst({ where: { id: noteId, authorId: { in: orgUserIds } } });
     if (!note) return { success: false, error: "Note not found" };
     const updated = await db.note.update({ where: { id: noteId }, data: { content } });
     revalidatePath(`/clients/${note.clientId}`);

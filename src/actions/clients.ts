@@ -54,7 +54,8 @@ export async function updateClient(clientId: string, data: ClientInput) {
   try {
     const session = await auth();
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
-    const existing = await db.client.findFirst({ where: { id: clientId, ownerId: session.user.id, deletedAt: null } });
+    const orgUserIds = await getOrgUserIds();
+    const existing = await db.client.findFirst({ where: { id: clientId, ownerId: { in: orgUserIds }, deletedAt: null } });
     if (!existing) return { success: false, error: "Client not found" };
     const parsed = clientSchema.safeParse(data);
     if (!parsed.success) return { success: false, error: parsed.error.errors[0]?.message || "Invalid data" };
@@ -83,7 +84,8 @@ export async function deleteClient(clientId: string) {
   try {
     const session = await auth();
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
-    const existing = await db.client.findFirst({ where: { id: clientId, ownerId: session.user.id, deletedAt: null } });
+    const orgUserIds = await getOrgUserIds();
+    const existing = await db.client.findFirst({ where: { id: clientId, ownerId: { in: orgUserIds }, deletedAt: null } });
     if (!existing) return { success: false, error: "Client not found" };
     await (db.client.update as any)({ where: { id: clientId }, data: { deletedAt: new Date() } });
     await logAudit(session.user.id, "DELETE", "client", clientId, existing.fullName, existing, null);
@@ -141,7 +143,8 @@ export async function convertLeadToClient(leadId: string) {
   try {
     const session = await auth();
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
-    const lead = await db.lead.findFirst({ where: { id: leadId, ownerId: session.user.id, deletedAt: null } });
+    const orgUserIds = await getOrgUserIds();
+    const lead = await db.lead.findFirst({ where: { id: leadId, ownerId: { in: orgUserIds }, deletedAt: null } });
     if (!lead) return { success: false, error: "Lead not found" };
     const client = await (db.client.create as any)({
       data: {
@@ -197,9 +200,10 @@ export async function searchClients(query: string) {
   try {
     const session = await auth();
     if (!session?.user?.id) return [];
+    const orgUserIds = await getOrgUserIds();
     return db.client.findMany({
       where: {
-        ownerId: session.user.id,
+        ownerId: { in: orgUserIds },
         deletedAt: null,
         OR: [
           { fullName: { contains: query, mode: "insensitive" } },

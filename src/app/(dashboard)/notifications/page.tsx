@@ -1,6 +1,6 @@
 import { Metadata } from "next";
-import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getOrgUserIds } from "@/lib/org";
 import { generateSmartAlerts, getSmartAlerts, deduplicateAlerts } from "@/actions/intelligence";
 import { NotificationsClient } from "@/components/notifications/notifications-client";
 import { Bell } from "lucide-react";
@@ -8,15 +8,14 @@ import { Bell } from "lucide-react";
 export const metadata: Metadata = { title: "Notifications" };
 
 export default async function NotificationsPage() {
-  const session = await auth();
-  const userId = (session?.user as any)?.id ?? "";
+  const orgUserIds = await getOrgUserIds();
 
   // 1. Clean up duplicates first
   await deduplicateAlerts();
 
   // 2. Only regenerate once per hour to avoid spam
   const lastAlert = await db.smartAlert.findFirst({
-    where: { ownerId: userId },
+    where: { ownerId: { in: orgUserIds } },
     orderBy: { createdAt: "desc" },
     select: { createdAt: true },
   });

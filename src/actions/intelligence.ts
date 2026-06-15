@@ -3,6 +3,7 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { getOrgUserIds } from "@/lib/org";
 
 // ─── Alert Generator ────────────────────────────────────────────────────────
 // Call this on login or daily cron — generates smart alerts from real data
@@ -12,6 +13,7 @@ export async function generateSmartAlerts() {
     const session = await auth();
     if (!session?.user?.id) return { success: false };
     const userId = (session.user as any).id ?? "";
+    const orgUserIds = await getOrgUserIds();
 
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -22,7 +24,7 @@ export async function generateSmartAlerts() {
 
     // ── 1. Client Birthdays (next 30 days) ─────────────────────────────────
     const clientsWithDob = await db.client.findMany({
-      where: { ownerId: userId, deletedAt: null, dob: { not: null } },
+      where: { ownerId: { in: orgUserIds }, deletedAt: null, dob: { not: null } },
       select: { id: true, fullName: true, dob: true },
     });
 
@@ -48,7 +50,7 @@ export async function generateSmartAlerts() {
 
     // ── 2. Family Member Birthdays (next 30 days) ──────────────────────────
     const familyGroups = await db.familyGroup.findMany({
-      where: { ownerId: userId, deletedAt: null },
+      where: { ownerId: { in: orgUserIds }, deletedAt: null },
       include: {
         members: {
           where: { dob: { not: null } },
@@ -105,7 +107,7 @@ export async function generateSmartAlerts() {
     // ── 4. Investment Maturity (next 30 days) ──────────────────────────────
     const maturingInvestments = await db.investment.findMany({
       where: {
-        client: { ownerId: userId },
+        client: { ownerId: { in: orgUserIds } },
         maturityDate: { gte: today, lte: next30 },
         status: "ACTIVE",
       },
@@ -129,7 +131,7 @@ export async function generateSmartAlerts() {
     // ── 5. Document Expiry (next 30 days) ──────────────────────────────────
     const expiringDocs = await db.document.findMany({
       where: {
-        client: { ownerId: userId },
+        client: { ownerId: { in: orgUserIds } },
         expiresAt: { gte: today, lte: next30 },
       },
       include: { client: { select: { id: true, fullName: true } } },
@@ -152,7 +154,7 @@ export async function generateSmartAlerts() {
     // ── 6. Overdue follow-ups ──────────────────────────────────────────────
     const overdueLeads = await db.lead.findMany({
       where: {
-        ownerId: userId,
+        ownerId: { in: orgUserIds },
         deletedAt: null,
         nextFollowUpAt: { lt: today },
         stage: { notIn: ["CONVERTED", "LOST"] },
@@ -184,7 +186,7 @@ export async function generateSmartAlerts() {
         
         const existing = await db.smartAlert.findFirst({
           where: {
-            ownerId: userId,
+            ownerId: { in: orgUserIds },
             alertType: alert.alertType,
             clientId: alert.clientId ?? null,
             memberId: alert.memberId ?? null,
@@ -210,10 +212,10 @@ export async function getSmartAlerts() {
   try {
     const session = await auth();
     if (!session?.user?.id) return [];
-    const userId = (session.user as any).id ?? "";
+    const orgUserIds = await getOrgUserIds();
 
     return db.smartAlert.findMany({
-      where: { ownerId: userId, isDeleted: false },
+      where: { ownerId: { in: orgUserIds }, isDeleted: false },
       orderBy: [{ isRead: "asc" }, { dueDate: "asc" }],
       take: 50,
     });
@@ -244,8 +246,8 @@ export async function markAllAlertsRead() {
   try {
     const session = await auth();
     if (!session?.user?.id) return { success: false };
-    const userId = (session.user as any).id ?? "";
-    await db.smartAlert.updateMany({ where: { ownerId: userId, isRead: false }, data: { isRead: true } });
+    const orgUserIds = await getOrgUserIds();
+    await db.smartAlert.updateMany({ where: { ownerId: { in: orgUserIds }, isRead: false }, data: { isRead: true } });
     revalidatePath("/notifications");
     return { success: true };
   } catch { return { success: false }; }
@@ -257,10 +259,10 @@ export async function getReferralTree(clientId: string) {
   try {
     const session = await auth();
     if (!session?.user?.id) return null;
-    const userId = (session.user as any).id ?? "";
+    const orgUserIds = await getOrgUserIds();
 
     const client = await db.client.findFirst({
-      where: { id: clientId, ownerId: userId, deletedAt: null },
+      where: { id: clientId, ownerId: { in: orgUserIds }, deletedAt: null },
       include: {
         referredBy: { select: { id: true, fullName: true, category: true } },
         referrals: {
@@ -333,10 +335,10 @@ export async function getAumGrowthData() {
   try {
     const session = await auth();
     if (!session?.user?.id) return null;
-    const userId = (session.user as any).id ?? "";
+    const orgUserIds = await getOrgUserIds();
 
     const clients = await db.client.findMany({
-      where: { ownerId: userId, deletedAt: null, aum: { not: null } },
+      where: { ownerId: { in: orgUserIds }, deletedAt: null, aum: { not: null } },
       select: { id: true, fullName: true, aum: true, category: true, createdAt: true },
       orderBy: { aum: "desc" },
     });
@@ -359,16 +361,16 @@ export async function getBirthdayCalendar(month: number, year: number) {
   try {
     const session = await auth();
     if (!session?.user?.id) return [];
-    const userId = (session.user as any).id ?? "";
+    const orgUserIds = await getOrgUserIds();
 
     const [clients, familyMembers] = await Promise.all([
       db.client.findMany({
-        where: { ownerId: userId, deletedAt: null, dob: { not: null } },
+        where: { ownerId: { in: orgUserIds }, deletedAt: null, dob: { not: null } },
         select: { id: true, fullName: true, dob: true, category: true },
       }),
       db.familyMember.findMany({
         where: {
-          familyGroup: { ownerId: userId, deletedAt: null },
+          familyGroup: { ownerId: { in: orgUserIds }, deletedAt: null },
           dob: { not: null },
         },
         include: {
@@ -420,10 +422,12 @@ export async function deleteAlert(alertId: string) {
   try {
     const session = await auth();
     if (!session?.user?.id) return { success: false };
-    const userId = (session.user as any).id ?? "";
+    const orgUserIds = await getOrgUserIds();
+    const existing = await db.smartAlert.findFirst({ where: { id: alertId, ownerId: { in: orgUserIds } } });
+    if (!existing) return { success: false };
     // Soft delete - mark as deleted so it never regenerates
     await db.smartAlert.update({ 
-      where: { id: alertId, ownerId: userId },
+      where: { id: alertId },
       data: { isDeleted: true, isRead: true }
     });
     revalidatePath("/notifications");
@@ -435,10 +439,10 @@ export async function deleteAllReadAlerts() {
   try {
     const session = await auth();
     if (!session?.user?.id) return { success: false };
-    const userId = (session.user as any).id ?? "";
+    const orgUserIds = await getOrgUserIds();
     // Soft delete all read alerts
     await db.smartAlert.updateMany({ 
-      where: { ownerId: userId, isRead: true },
+      where: { ownerId: { in: orgUserIds }, isRead: true },
       data: { isDeleted: true }
     });
     revalidatePath("/notifications");
@@ -450,11 +454,11 @@ export async function deduplicateAlerts() {
   try {
     const session = await auth();
     if (!session?.user?.id) return;
-    const userId = (session.user as any).id ?? "";
+    const orgUserIds = await getOrgUserIds();
 
     // Get all non-deleted alerts grouped by type+client+member
     const alerts = await db.smartAlert.findMany({
-      where: { ownerId: userId, isDeleted: false },
+      where: { ownerId: { in: orgUserIds }, isDeleted: false },
       orderBy: { createdAt: "asc" },
     });
 

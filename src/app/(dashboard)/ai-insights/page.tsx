@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getOrgUserIds } from "@/lib/org";
 import {
   Sparkles,
   TrendingUp,
@@ -18,6 +19,7 @@ import { formatCurrency, formatDate, cn } from "@/lib/utils";
 export const metadata: Metadata = { title: "AI Insights" };
 
 async function getInsightsData(userId: string) {
+  const orgUserIds = await getOrgUserIds();
   const now = new Date();
   const next30 = new Date(now.getTime() + 30 * 86400000);
   const next7   = new Date(now.getTime() +  7 * 86400000);
@@ -30,28 +32,28 @@ async function getInsightsData(userId: string) {
     categoryBreakdown,
   ] = await Promise.all([
     db.lead.findMany({
-      where: { ownerId: userId, deletedAt: null, stage: { notIn: ["CONVERTED","LOST"] }, lastActivityAt: { lt: past14 } },
+      where: { ownerId: { in: orgUserIds }, deletedAt: null, stage: { notIn: ["CONVERTED","LOST"] }, lastActivityAt: { lt: past14 } },
       select: { id: true, fullName: true, lastActivityAt: true, stage: true, estimatedValue: true },
       orderBy: { lastActivityAt: "asc" }, take: 5,
     }),
     db.investment.findMany({
-      where: { client: { ownerId: userId }, maturityDate: { gte: now, lte: next30 }, status: "ACTIVE" },
+      where: { client: { ownerId: { in: orgUserIds } }, maturityDate: { gte: now, lte: next30 }, status: "ACTIVE" },
       include: { client: { select: { id: true, fullName: true } } },
       orderBy: { maturityDate: "asc" },
     }),
     db.lead.findMany({
-      where: { ownerId: userId, deletedAt: null, nextFollowUpAt: { lt: now }, stage: { notIn: ["CONVERTED","LOST"] } },
+      where: { ownerId: { in: orgUserIds }, deletedAt: null, nextFollowUpAt: { lt: now }, stage: { notIn: ["CONVERTED","LOST"] } },
       select: { id: true, fullName: true, nextFollowUpAt: true, stage: true },
       orderBy: { nextFollowUpAt: "asc" }, take: 5,
     }),
     db.client.findMany({
-      where: { ownerId: userId, deletedAt: null, aum: { gt: 5000000 } },
+      where: { ownerId: { in: orgUserIds }, deletedAt: null, aum: { gt: 5000000 } },
       select: { id: true, fullName: true, aum: true, category: true },
       orderBy: { aum: "desc" }, take: 5,
     }),
     db.client.findMany({
       where: {
-        ownerId: userId, deletedAt: null,
+        ownerId: { in: orgUserIds }, deletedAt: null,
         dob: {
           gte: new Date(now.getFullYear(), now.getMonth(), now.getDate()),
           lte: next7,
@@ -60,28 +62,28 @@ async function getInsightsData(userId: string) {
       select: { id: true, fullName: true, dob: true },
     }),
     db.client.findMany({
-      where: { ownerId: userId, deletedAt: null, residency: { residencyType: { in: ["NRI","OCI"] } } },
+      where: { ownerId: { in: orgUserIds }, deletedAt: null, residency: { residencyType: { in: ["NRI","OCI"] } } },
       select: { id: true, fullName: true, aum: true, residency: { select: { residencyType: true, countryOfResidence: true } } },
       take: 5,
     }),
     db.client.findMany({
-      where: { ownerId: userId, deletedAt: null, createdAt: { gte: new Date(now.getTime() - 30 * 86400000) } },
+      where: { ownerId: { in: orgUserIds }, deletedAt: null, createdAt: { gte: new Date(now.getTime() - 30 * 86400000) } },
       select: { id: true, fullName: true, createdAt: true, category: true },
       orderBy: { createdAt: "desc" }, take: 5,
     }),
     db.lead.findMany({
-      where: { ownerId: userId, deletedAt: null, estimatedValue: { gt: 1000000 }, stage: { notIn: ["CONVERTED","LOST"] } },
+      where: { ownerId: { in: orgUserIds }, deletedAt: null, estimatedValue: { gt: 1000000 }, stage: { notIn: ["CONVERTED","LOST"] } },
       select: { id: true, fullName: true, estimatedValue: true, stage: true },
       orderBy: { estimatedValue: "desc" }, take: 5,
     }),
     db.document.findMany({
-      where: { client: { ownerId: userId }, expiresAt: { gte: now, lte: next30 } },
+      where: { client: { ownerId: { in: orgUserIds } }, expiresAt: { gte: now, lte: next30 } },
       include: { client: { select: { id: true, fullName: true } } },
       orderBy: { expiresAt: "asc" }, take: 5,
     }),
     db.client.groupBy({
       by: ["category"],
-      where: { ownerId: userId, deletedAt: null },
+      where: { ownerId: { in: orgUserIds }, deletedAt: null },
       _count: true,
       _sum: { aum: true },
     }),

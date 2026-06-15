@@ -35,6 +35,7 @@ model User {
   sentInvites     TeamInvite[] @relation("SentInvites")
   ticketsAssigned Ticket[]     @relation("TicketsAssignedTo")
   ticketsCreated  Ticket[]     @relation("TicketsAssignedBy")
+  passwordResetTokens PasswordResetToken[]
 
   @@map("users")
 }
@@ -859,6 +860,22 @@ model TeamInvite {
   @@index([token])
   @@index([email])
   @@map("team_invites")
+}
+
+// ─── Password Reset ─────────────────────────────────────────────────────────────
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  token     String    @unique @default(cuid())
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@map("password_reset_tokens")
 }
 
 // ─── Tickets (Work Assignments) ────────────────────────────────────────────

@@ -101,21 +101,6 @@ export default function LoginPage() {
               </div>
             ))}
           </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-3 pt-2">
-            {[
-              { value: "862+", label: "Clients" },
-              { value: "₹439Cr", label: "AUM Tracked" },
-              { value: "99.9%", label: "Uptime" },
-            ].map((s) => (
-              <div key={s.label} className="rounded-xl p-3 text-center border"
-                style={{ backgroundColor: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.08)" }}>
-                <p className="text-lg font-bold text-white">{s.value}</p>
-                <p className="text-xs text-white/40 mt-0.5">{s.label}</p>
-              </div>
-            ))}
-          </div>
         </div>
 
         <div className="relative z-10">

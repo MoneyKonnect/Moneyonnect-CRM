@@ -62,3 +62,45 @@ export async function sendInviteEmail({
     `,
   });
 }
+
+
+export async function sendPasswordResetEmail({
+  to,
+  resetUrl,
+}: {
+  to: string;
+  resetUrl: string;
+}) {
+  await transporter.sendMail({
+    from: `"MoneyKonnect CRM" <info@moneykonnect.in>`,
+    to,
+    subject: `Reset your MoneyKonnect CRM password`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h1 style="color: #3fd1b8; font-size: 28px; margin: 0;">MoneyKonnect CRM</h1>
+          <p style="color: #64748b; margin: 5px 0 0;">by MoneyKonnect</p>
+        </div>
+        <div style="background: #f8fafc; border-radius: 12px; padding: 30px; margin-bottom: 24px;">
+          <h2 style="color: #0f172a; margin: 0 0 12px;">Reset your password</h2>
+          <p style="color: #475569; margin: 0;">
+            We received a request to reset your MoneyKonnect CRM password. Click the button below to choose a new one.
+          </p>
+        </div>
+        <div style="text-align: center; margin-bottom: 24px;">
+          <a href="${resetUrl}" style="background: #3fd1b8; color: #0f172a; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px; display: inline-block;">
+            Reset Password
+          </a>
+        </div>
+        <p style="color: #94a3b8; font-size: 13px; text-align: center; margin: 0;">
+          This link expires in 1 hour. If you did not request a password reset, you can safely ignore this email.
+        </p>
+        <div style="border-top: 1px solid #e2e8f0; margin-top: 24px; padding-top: 16px; text-align: center;">
+          <p style="color: #94a3b8; font-size: 12px; margin: 0;">
+            MoneyKonnect CRM &mdash; MoneyKonnect LLP &bull; info@moneykonnect.in
+          </p>
+        </div>
+      </div>
+    `,
+  });
+}

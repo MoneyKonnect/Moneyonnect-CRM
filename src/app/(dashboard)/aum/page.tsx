@@ -18,7 +18,7 @@ async function getAumData(userId: string) {
       referredBy: { select: { id: true, fullName: true } },
       referrals: { where: { deletedAt: null }, select: { id: true, fullName: true, aum: true } },
     },
-    orderBy: { aum: "desc" },
+    orderBy: { aum: { sort: "desc", nulls: "last" } },
   });
 
   const totalAUM = clients.reduce((s, c) => s + Number(c.aum || 0), 0);

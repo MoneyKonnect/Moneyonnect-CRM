@@ -42,7 +42,11 @@ export async function POST(req: NextRequest) {
         name,
         email: email.toLowerCase(),
         password: hashedPassword,
-        role: inviteData ? inviteData.role : "ADVISOR",
+        role: inviteData
+          ? inviteData.role
+          : email.toLowerCase().endsWith("@moneykonnect.in")
+            ? "ADMIN"
+            : "ADVISOR",
       },
     });
 

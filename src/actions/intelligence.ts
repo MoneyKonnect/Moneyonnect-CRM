@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { getOrgUserIds } from "@/lib/org";
+import { sendBirthdayWishEmail } from "@/lib/email";
 
 // ─── Alert Generator ────────────────────────────────────────────────────────
 // Call this on login or daily cron — generates smart alerts from real data
@@ -366,7 +367,7 @@ export async function getBirthdayCalendar(month: number, year: number) {
     const [clients, familyMembers] = await Promise.all([
       db.client.findMany({
         where: { ownerId: { in: orgUserIds }, deletedAt: null, dob: { not: null } },
-        select: { id: true, fullName: true, dob: true, category: true },
+        select: { id: true, fullName: true, dob: true, category: true, email: true, phone: true },
       }),
       db.familyMember.findMany({
         where: {
@@ -393,6 +394,8 @@ export async function getBirthdayCalendar(month: number, year: number) {
           category: c.category,
           age: year - dob.getFullYear(),
           clientId: c.id,
+          email: c.email,
+          phone: c.phone,
         });
       }
     }
@@ -410,6 +413,8 @@ export async function getBirthdayCalendar(month: number, year: number) {
           age: year - dob.getFullYear(),
           clientId: m.familyGroup?.headClientId,
           familyGroupName: m.familyGroup?.name,
+          email: m.email || null,
+          phone: m.phone || null,
         });
       }
     }
@@ -482,4 +487,37 @@ export async function deduplicateAlerts() {
 
     revalidatePath("/notifications");
   } catch { /* silent */ }
+}
+
+
+export async function sendBirthdayWish(formData: FormData) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+
+    const to = formData.get("to") as string;
+    const name = formData.get("name") as string;
+    const message = formData.get("message") as string;
+    const file = formData.get("attachment") as File | null;
+
+    if (!to || !name || !message?.trim()) {
+      return { success: false, error: "Missing required fields" };
+    }
+
+    let attachment: { filename: string; content: Buffer } | null = null;
+    if (file && file.size > 0) {
+      const arrayBuffer = await file.arrayBuffer();
+      attachment = {
+        filename: file.name,
+        content: Buffer.from(arrayBuffer),
+      };
+    }
+
+    await sendBirthdayWishEmail({ to, name, message: message.trim(), attachment });
+
+    return { success: true };
+  } catch (e) {
+    console.error("sendBirthdayWish error:", e);
+    return { success: false, error: "Failed to send email" };
+  }
 }

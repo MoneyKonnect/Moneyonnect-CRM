@@ -104,3 +104,50 @@ export async function sendPasswordResetEmail({
     `,
   });
 }
+
+
+export async function sendBirthdayWishEmail({
+  to,
+  name,
+  message,
+  attachment,
+}: {
+  to: string;
+  name: string;
+  message: string;
+  attachment?: { filename: string; content: Buffer } | null;
+}) {
+  const mailOptions: any = {
+    from: `"MoneyKonnect" <info@moneykonnect.in>`,
+    to,
+    subject: `Happy Birthday, ${name}! \u{1F389}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h1 style="color: #3fd1b8; font-size: 28px; margin: 0;">MoneyKonnect</h1>
+        </div>
+        <div style="background: #fff5f7; border-radius: 12px; padding: 30px; margin-bottom: 24px; text-align: center;">
+          <p style="font-size: 40px; margin: 0 0 12px;">\u{1F382}</p>
+          <h2 style="color: #0f172a; margin: 0 0 16px;">Happy Birthday, ${name}!</h2>
+          <p style="color: #475569; margin: 0; white-space: pre-wrap; text-align: left;">${message}</p>
+        </div>
+        <div style="border-top: 1px solid #e2e8f0; margin-top: 24px; padding-top: 16px; text-align: center;">
+          <p style="color: #94a3b8; font-size: 12px; margin: 0;">
+            MoneyKonnect &bull; info@moneykonnect.in
+          </p>
+        </div>
+      </div>
+    `,
+  };
+
+  if (attachment) {
+    mailOptions.attachments = [
+      {
+        filename: attachment.filename,
+        content: attachment.content,
+      },
+    ];
+  }
+
+  await transporter.sendMail(mailOptions);
+}

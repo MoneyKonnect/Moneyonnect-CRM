@@ -12,10 +12,12 @@ import {
   MessageSquare,
   Phone,
   Gift,
+  Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { getBirthdayCalendar } from "@/actions/intelligence";
+import { BirthdayWishModal } from "./birthday-wish-modal";
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -255,6 +257,7 @@ export function BirthdayCalendarClient() {
 }
 
 function BirthdayCard({ birthday }: { birthday: any }) {
+  const [wishModalOpen, setWishModalOpen] = useState(false);
   const isClient = birthday.type === "CLIENT";
   const whatsapp = birthday.phone?.replace(/[^0-9]/g, "");
   const today = new Date();
@@ -282,6 +285,14 @@ function BirthdayCard({ birthday }: { birthday: any }) {
           </div>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
+          {birthday.email && (
+            <button
+              onClick={() => setWishModalOpen(true)}
+              className="text-2xs text-pink-400 hover:text-pink-300 px-1.5 py-0.5 rounded border border-pink-500/20 hover:bg-pink-500/10 transition-colors flex items-center gap-1"
+            >
+              <Mail className="h-3 w-3" /> Send Wish
+            </button>
+          )}
           {birthday.clientId && (
             <a
               href={`/clients/${birthday.clientId}`}
@@ -292,6 +303,15 @@ function BirthdayCard({ birthday }: { birthday: any }) {
           )}
         </div>
       </div>
+
+      {birthday.email && (
+        <BirthdayWishModal
+          open={wishModalOpen}
+          onClose={() => setWishModalOpen(false)}
+          recipientName={birthday.name}
+          recipientEmail={birthday.email}
+        />
+      )}
     </div>
   );
 }

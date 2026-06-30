@@ -66,11 +66,24 @@ export async function POST(req: NextRequest) {
   const rawBody = await req.text();
 
   const signature = req.headers.get("x-trello-webhook");
-  const callbackUrl = `${process.env.NEXTAUTH_URL || "https://moneykonnect-crm.vercel.app"}/api/webhooks/trello`;
+  // Hardcoded to exactly match what was registered with Trello — this MUST be
+  // byte-for-byte identical to the callbackURL used when creating the webhook,
+  // or signature verification will always fail regardless of env var state.
+  const callbackUrl = "https://moneykonnect-crm.vercel.app/api/webhooks/trello";
   const verified = verifyTrelloSignature(rawBody, signature, callbackUrl);
 
   if (!verified) {
-    console.error("Trello webhook: signature verification failed");
+    const secretSet = !!process.env.TRELLO_API_SECRET;
+    const expected = secretSet
+      ? crypto.createHmac("sha1", process.env.TRELLO_API_SECRET!).update(rawBody + callbackUrl).digest("base64")
+      : "NO_SECRET_SET";
+    console.error("Trello webhook: signature verification failed", {
+      secretSet,
+      receivedSignature: signature,
+      expectedSignature: expected,
+      callbackUrl,
+      bodyLength: rawBody.length,
+    });
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 

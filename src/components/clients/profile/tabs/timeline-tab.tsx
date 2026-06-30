@@ -17,6 +17,7 @@ import {
   ArrowDownLeft,
   Activity,
   StickyNote,
+  CheckSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,12 +28,13 @@ import { cn, formatDate } from "@/lib/utils";
 import { createInteraction } from "@/actions/interactions";
 
 const CHANNEL_CONFIG = {
-  PHONE:     { icon: Phone,        label: "Phone Call",   color: "text-blue-400",    bg: "bg-blue-500/10"    },
-  EMAIL:     { icon: Mail,         label: "Email",        color: "text-violet-400",  bg: "bg-violet-500/10"  },
-  WHATSAPP:  { icon: MessageSquare,label: "MessageSquare",     color: "text-emerald-400", bg: "bg-emerald-500/10" },
-  IN_PERSON: { icon: Users,        label: "In Person",    color: "text-amber-400",   bg: "bg-amber-500/10"   },
-  VIDEO_CALL:{ icon: Video,        label: "Video Call",   color: "text-cyan-400",    bg: "bg-cyan-500/10"    },
-  SMS:       { icon: MessageSquare,label: "SMS",          color: "text-pink-400",    bg: "bg-pink-500/10"    },
+  PHONE:       { icon: Phone,        label: "Phone Call",   color: "text-blue-400",    bg: "bg-blue-500/10"    },
+  EMAIL:       { icon: Mail,         label: "Email",        color: "text-violet-400",  bg: "bg-violet-500/10"  },
+  WHATSAPP:    { icon: MessageSquare,label: "WhatsApp",     color: "text-emerald-400", bg: "bg-emerald-500/10" },
+  IN_PERSON:   { icon: Users,        label: "In Person",    color: "text-amber-400",   bg: "bg-amber-500/10"   },
+  VIDEO_CALL:  { icon: Video,        label: "Video Call",   color: "text-cyan-400",    bg: "bg-cyan-500/10"    },
+  SMS:         { icon: MessageSquare,label: "SMS",          color: "text-pink-400",    bg: "bg-pink-500/10"    },
+  TRELLO_TASK: { icon: CheckSquare,  label: "Trello Task",  color: "text-indigo-400",  bg: "bg-indigo-500/10"  },
 };
 
 interface TimelineTabProps { client: any; }

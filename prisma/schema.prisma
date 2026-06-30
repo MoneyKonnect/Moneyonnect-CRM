@@ -197,6 +197,7 @@ enum InteractionChannel {
   IN_PERSON
   VIDEO_CALL
   SMS
+  TRELLO_TASK
 }
 
 enum InteractionDirection {

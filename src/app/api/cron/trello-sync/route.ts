@@ -48,10 +48,15 @@ interface TrelloCard {
 }
 
 async function fetchDoneCards(): Promise<TrelloCard[]> {
+  // Only fetch cards that have moved/changed within the last 48 hours —
+  // this runs daily, so a 48h window gives a safety buffer without ever
+  // re-scanning the board's full multi-thousand-card history every time.
+  const since = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+
   const seen = new Map<string, TrelloCard>();
   let before: string | undefined;
   let page = 0;
-  const MAX_PAGES = 10;
+  const MAX_PAGES = 5;
 
   while (page < MAX_PAGES) {
     page++;
@@ -63,6 +68,7 @@ async function fetchDoneCards(): Promise<TrelloCard[]> {
       member_fields: "id",
       limit: "1000",
       sort: "-id",
+      since,
     });
     if (before) params.set("before", before);
 

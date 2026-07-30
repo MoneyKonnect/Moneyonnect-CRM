@@ -1,0 +1,3 @@
+fastapi
+casparser
+python-multipart

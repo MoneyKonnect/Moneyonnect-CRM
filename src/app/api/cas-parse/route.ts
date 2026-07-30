@@ -66,9 +66,8 @@ export async function POST(req: NextRequest) {
     pythonForm.append("password", password || "");
 
     // Now calls our own Vercel Python function instead of the external Railway service
-    const casServiceUrl = process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}/api/parse-cas`
-      : "http://localhost:3000/api/parse-cas";
+    const casServiceUrl = "https://moneykonnect-crm.vercel.app/api/parse-cas";
+    console.log("Calling CAS service at:", casServiceUrl);
     const res = await fetch(casServiceUrl, {
       method: "POST",
       body: pythonForm,

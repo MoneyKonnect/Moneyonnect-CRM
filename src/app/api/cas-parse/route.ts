@@ -65,7 +65,11 @@ export async function POST(req: NextRequest) {
     pythonForm.append("file", file as Blob);
     pythonForm.append("password", password || "");
 
-    const res = await fetch(process.env.CAS_SERVICE_URL!, {
+    // Now calls our own Vercel Python function instead of the external Railway service
+    const casServiceUrl = process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}/api/parse-cas`
+      : "http://localhost:3000/api/parse-cas";
+    const res = await fetch(casServiceUrl, {
       method: "POST",
       body: pythonForm,
     });

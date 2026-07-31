@@ -256,11 +256,11 @@ export default function CASParserPage() {
           <div className="rounded-2xl border border-border bg-card p-6 space-y-5">
             <div>
               <h3 className="text-sm font-semibold text-foreground mb-1">PDF Password</h3>
-              <p className="text-xs text-muted-foreground">NSDL/CDSL: your PAN (e.g. ABCDE1234F). CAMS/KFintech: leave blank if unlocked.</p>
+              <p className="text-xs text-muted-foreground">NSDL/CDSL: your PAN (e.g. ABCDE1234F). CAMS/KFintech: enter the exact PDF password you set (case-sensitive) or leave blank if unlocked.</p>
             </div>
             <div className="relative">
               <input type={showPassword ? "text" : "password"} value={password}
-                onChange={e => setPassword(e.target.value.toUpperCase())} placeholder="ABCDE1234F"
+                onChange={e => setPassword(e.target.value)} placeholder="ABCDE1234F or your PDF password"
                 className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500 text-foreground pr-12" />
               <button onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}

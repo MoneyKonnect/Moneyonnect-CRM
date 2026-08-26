@@ -137,18 +137,22 @@ export async function POST(req: NextRequest) {
       const fromNameMatch = fromRaw.match(/^"?([^"<]+)"?\s*</);
       const fromName = fromNameMatch ? fromNameMatch[1].trim() : null;
 
+      // Only consider emails that actually came FROM a known client's own
+      // address. Vendor/registrar mail (KFintech, CAMS), our own outbound
+      // newsletters, and AMC mailers all get skipped before we even look at
+      // keywords — those are never a client complaint, no matter what words
+      // appear in them.
+      const matchedClientId = emailToClientId.get(fromAddress) || null;
+      if (!matchedClientId) { skipped++; continue; }
+
       const fullBody = extractBody(detail.payload) || detail.snippet || "";
       const snippet = detail.snippet || fullBody.slice(0, 200);
 
       const triggeredKeywords = findTriggeredKeywords(subject + " " + fullBody);
       const isAutoSuggested = triggeredKeywords.length > 0;
 
-      // Only store emails that actually trip a keyword — keeps the register
-      // focused on likely complaints/queries rather than mirroring the whole inbox.
       if (!isAutoSuggested) { skipped++; continue; }
       flagged++;
-
-      const matchedClientId = emailToClientId.get(fromAddress) || null;
 
       await prisma.complianceEmail.create({
         data: {

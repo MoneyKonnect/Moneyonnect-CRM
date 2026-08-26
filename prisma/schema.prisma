@@ -922,3 +922,22 @@ model Folio {
   @@index([clientId])
   @@map("folios")
 }
+
+model GmailAuthToken {
+  id            String   @id @default(cuid())
+  email         String   @unique // the mailbox this token grants access to, e.g. info@moneykonnect.in
+  refreshToken  String   // long-lived token used to get new access tokens
+  accessToken   String?  // short-lived, cached between syncs
+  accessTokenExpiresAt DateTime?
+  scopes        String   // space-separated list of granted OAuth scopes
+  connectedById String?  // which CRM user connected this (for audit trail)
+  connectedAt   DateTime @default(now())
+  lastSyncedAt  DateTime?
+  lastSyncStatus String? // "SUCCESS" | "FAILED" | null (never synced yet)
+  lastSyncError String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("gmail_auth_tokens")
+}
+

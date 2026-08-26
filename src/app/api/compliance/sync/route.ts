@@ -13,10 +13,10 @@ const BATCH_SIZE = 100; // emails fetched per invocation — small enough to sta
 const TRIGGER_KEYWORDS = [
   "complaint", "complain", "grievance", "escalate", "escalation",
   "dissatisfied", "unhappy", "disappointed", "not satisfied",
-  "delay", "delayed", "pending since", "no response", "not resolved",
-  "wrong amount", "incorrect", "mistake", "error in", "discrepancy",
-  "refund", "compensation", "mis-sold", "misled", "fraud", "cheated",
-  "legal action", "sebi", "ombudsman", "regulator", "consumer forum",
+  "pending since", "no response", "not resolved",
+  "wrong amount", "mistake", "discrepancy",
+  "compensation", "mis-sold", "misled", "fraud", "cheated",
+  "legal action", "ombudsman", "consumer forum",
 ];
 
 async function refreshAccessToken(refreshToken: string) {

@@ -351,6 +351,7 @@ model Client {
   notes          Note[]
   tasks          Task[]
   investments    Investment[]
+  complianceEmails ComplianceEmail[]
   folios         Folio[]
   tags           TagsOnClients[]
   leads          Lead[]            @relation("ConvertedClient")
@@ -940,4 +941,46 @@ model GmailAuthToken {
 
   @@map("gmail_auth_tokens")
 }
+
+model ComplianceEmail {
+  id            String   @id @default(cuid())
+  gmailMessageId String  @unique // Gmail's own message ID, used for idempotent re-sync
+  threadId      String?
+  fromAddress   String
+  fromName      String?
+  toAddress     String?
+  subject       String
+  bodySnippet   String   // short preview, kept for the review-queue list view
+  bodyFull      String?  // full email body, fetched on demand or during backfill
+  receivedAt    DateTime
+
+  clientId      String?  // matched client, if fromAddress matched a known client email
+  matchedVia    String?  // "EMAIL_EXACT" | null (kept simple and honest — no fuzzy guessing on emails)
+
+  category      String   @default("NEEDS_REVIEW")
+  // "NEEDS_REVIEW" | "CONFIRMED_COMPLAINT" | "CONFIRMED_QUERY" | "DISMISSED"
+
+  matchedKeywords String? // which trigger words caused this to be auto-suggested, comma-separated
+  isAutoSuggested Boolean @default(false)
+
+  status        String   @default("OPEN") // "OPEN" | "RESOLVED"
+  resolutionNotes String?
+  resolvedAt    DateTime?
+  resolvedById  String?
+
+  reviewedById  String?
+  reviewedAt    DateTime?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  client        Client?  @relation(fields: [clientId], references: [id])
+
+  @@index([category])
+  @@index([status])
+  @@index([clientId])
+  @@index([receivedAt])
+  @@map("compliance_emails")
+}
+
 

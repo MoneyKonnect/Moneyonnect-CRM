@@ -182,20 +182,39 @@ export async function POST(req: NextRequest) {
 
     let inserted = 0, skipped = 0, flagged = 0;
 
-    for (const msg of messages) {
-      const existing = await prisma.complianceEmail.findUnique({
-        where: { gmailMessageId: msg.id },
-      });
-      if (existing) { skipped++; continue; }
+    // 1) One DB round-trip to find which of these messages are already
+    // processed, instead of one query per message.
+    const existingIds = new Set(
+      (await prisma.complianceEmail.findMany({
+        where: { gmailMessageId: { in: messages.map((m) => m.id) } },
+        select: { gmailMessageId: true },
+      })).map((e) => e.gmailMessageId)
+    );
+    const toCheck = messages.filter((m) => !existingIds.has(m.id));
+    skipped += messages.length - toCheck.length;
 
-      const detailRes = await fetch(
-        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=full`,
-        { headers: { Authorization: `Bearer ${accessToken}` } }
+    // 2) Fetch lightweight metadata (headers only, no body) for the rest,
+    // in parallel chunks — this is the expensive part when done serially,
+    // since most emails aren't from a known client and get discarded anyway.
+    const CONCURRENCY = 15;
+    const metaResults: { id: string; headers: any[] }[] = [];
+    for (let i = 0; i < toCheck.length; i += CONCURRENCY) {
+      const chunk = toCheck.slice(i, i + CONCURRENCY);
+      const chunkResults = await Promise.all(
+        chunk.map(async (m) => {
+          const res = await fetch(
+            `https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=metadata&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Subject&metadataHeaders=Date`,
+            { headers: { Authorization: `Bearer ${accessToken}` } }
+          );
+          if (!res.ok) return null;
+          const data = await res.json();
+          return { id: m.id, headers: data.payload?.headers || [] };
+        })
       );
-      const detail = await detailRes.json();
-      if (!detailRes.ok) continue;
+      metaResults.push(...chunkResults.filter((r): r is { id: string; headers: any[] } => r !== null));
+    }
 
-      const headers = detail.payload?.headers || [];
+    for (const { id: msgId, headers } of metaResults) {
       const fromRaw = getHeader(headers, "From");
       const toRaw = getHeader(headers, "To");
       const subject = getHeader(headers, "Subject") || "(no subject)";
@@ -207,12 +226,18 @@ export async function POST(req: NextRequest) {
       const fromName = fromNameMatch ? fromNameMatch[1].trim() : null;
 
       // Only consider emails that actually came FROM a known client's own
-      // address. Vendor/registrar mail (KFintech, CAMS), our own outbound
-      // newsletters, and AMC mailers all get skipped before we even look at
-      // keywords — those are never a client complaint, no matter what words
-      // appear in them.
+      // address — this check now happens BEFORE we ever fetch the full body,
+      // since it's cheap (just a header) and eliminates ~99% of messages.
       const matchedClientId = emailToClientId.get(fromAddress) || null;
       if (!matchedClientId) { skipped++; continue; }
+
+      // Only NOW, for the rare sender-match, fetch the full body.
+      const detailRes = await fetch(
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msgId}?format=full`,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      const detail = await detailRes.json();
+      if (!detailRes.ok) continue;
 
       const fullBody = extractBody(detail.payload) || detail.snippet || "";
       const snippet = detail.snippet || fullBody.slice(0, 200);
@@ -225,14 +250,14 @@ export async function POST(req: NextRequest) {
       // Apply the label in Gmail itself, per your instruction — surfaces the
       // suggestion in your team's normal workflow, not just inside the CRM.
       try {
-        await applyGmailLabel(accessToken, msg.id);
+        await applyGmailLabel(accessToken, msgId);
       } catch (labelErr) {
-        console.error(`Failed to apply Gmail label to ${msg.id}:`, labelErr);
+        console.error(`Failed to apply Gmail label to ${msgId}:`, labelErr);
       }
 
       await prisma.complianceEmail.create({
         data: {
-          gmailMessageId: msg.id,
+          gmailMessageId: msgId,
           threadId: detail.threadId || null,
           fromAddress,
           fromName,

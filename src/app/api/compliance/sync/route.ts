@@ -10,13 +10,25 @@ const BATCH_SIZE = 100; // emails fetched per invocation — small enough to sta
 // Words that trigger a "needs review" suggestion. Kept as a flat, auditable
 // list — an auditor or advisor can see exactly why something got flagged,
 // no black-box scoring.
-const TRIGGER_KEYWORDS = [
-  "complaint", "complain", "grievance", "escalate", "escalation",
-  "dissatisfied", "unhappy", "disappointed", "not satisfied",
-  "pending since", "no response", "not resolved",
-  "wrong amount", "mistake", "discrepancy",
-  "compensation", "mis-sold", "misled", "fraud", "cheated",
-  "legal action", "ombudsman", "consumer forum",
+// Layer 1: genuine signal words — must appear in subject or the OPENING of
+// the email (not buried in a long body or footer/disclosure text).
+const SIGNAL_KEYWORDS = [
+  "complaint", "complain", "grievance", "issue", "query", "problem",
+  "help", "escalate", "escalation", "dissatisfied", "unhappy",
+  "disappointed", "not satisfied", "not resolved", "no response",
+  "mistake", "discrepancy", "wrong amount", "compensation",
+  "mis-sold", "misled", "fraud", "cheated", "legal action",
+  "ombudsman", "consumer forum",
+];
+
+// Layer 2: must ALSO relate to an actual financial/transaction context —
+// filters out generic complaints about unrelated things and confirms this
+// is genuinely investment/account related.
+const FINANCE_CONTEXT_KEYWORDS = [
+  "scheme", "kyc", "re-kyc", "rekyc", "transaction", "redemption",
+  "sip", "folio", "nomination", "nominee", "statement", "investment",
+  "withdrawal", "portfolio", "fund", "account", "demat", "units",
+  "nav", "switch", "purchase", "cheque", "bank details", "pan",
 ];
 
 async function refreshAccessToken(refreshToken: string) {
@@ -59,9 +71,34 @@ function getHeader(headers: any[], name: string): string {
   return headers.find((h) => h.name.toLowerCase() === name.toLowerCase())?.value || "";
 }
 
-function findTriggeredKeywords(text: string): string[] {
-  const lower = text.toLowerCase();
-  return TRIGGER_KEYWORDS.filter((kw) => lower.includes(kw));
+function isForwardedMessage(subject: string): boolean {
+  return /^\s*(fwd?|fw)\s*:/i.test(subject);
+}
+
+function classifyEmail(subject: string, fullBody: string): { flagged: boolean; matchedKeywords: string[] } {
+  // Forwarded messages relay content that ORIGINATED elsewhere (often a
+  // company/vendor) — the client's own mailbox sent it, but the words
+  // aren't the client's own complaint. Skip these entirely.
+  if (isForwardedMessage(subject)) {
+    return { flagged: false, matchedKeywords: [] };
+  }
+
+  const opening = (subject + " " + fullBody.slice(0, 300)).toLowerCase();
+  const signalHits = SIGNAL_KEYWORDS.filter((kw) => opening.includes(kw));
+  if (signalHits.length === 0) {
+    return { flagged: false, matchedKeywords: [] };
+  }
+
+  // Must also relate to an actual financial/transaction context somewhere
+  // in the email — confirms this is genuinely account/investment related,
+  // not an unrelated personal message that happens to say "help" or "issue".
+  const fullLower = (subject + " " + fullBody).toLowerCase();
+  const contextHits = FINANCE_CONTEXT_KEYWORDS.filter((kw) => fullLower.includes(kw));
+  if (contextHits.length === 0) {
+    return { flagged: false, matchedKeywords: [] };
+  }
+
+  return { flagged: true, matchedKeywords: [...signalHits, ...contextHits] };
 }
 
 export async function POST(req: NextRequest) {
@@ -162,8 +199,7 @@ export async function POST(req: NextRequest) {
       const fullBody = extractBody(detail.payload) || detail.snippet || "";
       const snippet = detail.snippet || fullBody.slice(0, 200);
 
-      const triggeredKeywords = findTriggeredKeywords(subject + " " + fullBody);
-      const isAutoSuggested = triggeredKeywords.length > 0;
+      const { flagged: isAutoSuggested, matchedKeywords: triggeredKeywords } = classifyEmail(subject, fullBody);
 
       if (!isAutoSuggested) { skipped++; continue; }
       flagged++;

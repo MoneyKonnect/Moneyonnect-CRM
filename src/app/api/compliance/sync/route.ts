@@ -71,7 +71,21 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json().catch(() => ({}));
+  // Fixed calendar-month window, e.g. "2022-01" — stable regardless of how
+  // much NEW mail keeps arriving elsewhere in the inbox. Raw pageToken-based
+  // pagination alone doesn't work reliably on a live, high-volume mailbox:
+  // each fresh call restarts from the newest message, so new automated mail
+  // (KFintech/CAMS reports arrive constantly) keeps pushing the "top of the
+  // list" forward and we'd never actually reach back to 2022.
+  const monthParam: string | undefined = body.month; // "YYYY-MM"
   const pageToken: string | undefined = body.pageToken;
+
+  const [startYear, startMonthNum] = monthParam
+    ? monthParam.split("-").map(Number)
+    : [2022, 1];
+  const afterDate = `${startYear}/${String(startMonthNum).padStart(2, "0")}/01`;
+  const nextMonthDate = new Date(startYear, startMonthNum, 1); // JS Date rolls over correctly
+  const beforeDate = `${nextMonthDate.getFullYear()}/${String(nextMonthDate.getMonth() + 1).padStart(2, "0")}/01`;
 
   try {
     const authToken = await prisma.gmailAuthToken.findUnique({
@@ -83,9 +97,9 @@ export async function POST(req: NextRequest) {
 
     const accessToken = await refreshAccessToken(authToken.refreshToken);
 
-    // List message IDs for this batch
+    // List message IDs for this batch — bounded to a fixed calendar month
     const listParams = new URLSearchParams({
-      q: `after:${SYNC_START_DATE}`,
+      q: `after:${afterDate} before:${beforeDate}`,
       maxResults: String(BATCH_SIZE),
     });
     if (pageToken) listParams.set("pageToken", pageToken);
@@ -175,14 +189,28 @@ export async function POST(req: NextRequest) {
       inserted++;
     }
 
+    const currentMonth = `${startYear}-${String(startMonthNum).padStart(2, "0")}`;
+    const now = new Date();
+    const isCurrentOrFutureMonth =
+      startYear > now.getFullYear() ||
+      (startYear === now.getFullYear() && startMonthNum > now.getMonth() + 1);
+
     return NextResponse.json({
       ok: true,
+      month: currentMonth,
       inserted,
       skipped,
       flagged,
       processedInBatch: messages.length,
       nextPageToken: nextPageToken || null,
-      done: !nextPageToken,
+      monthComplete: !nextPageToken,
+      // If this month is done AND it's not the current/future month, the
+      // caller should advance to next month. Otherwise we've caught up to
+      // "now" and the whole backfill is finished.
+      nextMonth: !nextPageToken && !isCurrentOrFutureMonth
+        ? (startMonthNum === 12 ? `${startYear + 1}-01` : `${startYear}-${String(startMonthNum + 1).padStart(2, "0")}`)
+        : null,
+      allDone: !nextPageToken && isCurrentOrFutureMonth,
     });
   } catch (err) {
     console.error("Compliance email sync error:", err);

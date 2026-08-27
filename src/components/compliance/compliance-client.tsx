@@ -4,12 +4,12 @@ import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import {
   ShieldAlert, Search, Download, CheckCircle2, Clock,
-  AlertTriangle, ChevronDown, Loader2, ExternalLink,
+  AlertTriangle, ChevronDown, Loader2, ExternalLink, RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn, formatDate } from "@/lib/utils";
-import { getComplianceEmails, updateComplianceEmailStatus } from "@/actions/compliance";
+import { getComplianceEmails, updateComplianceEmailStatus, runComplianceSyncNow } from "@/actions/compliance";
 
 const CATEGORY_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   NEEDS_REVIEW: { label: "Needs Review", color: "text-amber-400", bg: "bg-amber-500/10" },
@@ -26,6 +26,7 @@ export function ComplianceClient() {
   const [selected, setSelected] = useState<any | null>(null);
   const [resolutionDraft, setResolutionDraft] = useState("");
   const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -73,6 +74,18 @@ export function ComplianceClient() {
     }
   };
 
+  const handleSyncNow = async () => {
+    setSyncing(true);
+    const result = await runComplianceSyncNow();
+    if (result.success) {
+      toast.success(`Synced — ${result.labelImported} from labels, ${result.keywordFlagged} new suggestions`);
+      load();
+    } else {
+      toast.error(result.error || "Sync failed");
+    }
+    setSyncing(false);
+  };
+
   const handleExport = () => {
     const rows = emails.map((e) => ({
       Subject: e.subject,
@@ -113,9 +126,15 @@ export function ComplianceClient() {
             </p>
           </div>
         </div>
-        <Button onClick={handleExport} disabled={emails.length === 0} className="gap-1.5">
-          <Download className="h-4 w-4" /> Export CSV
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={handleSyncNow} disabled={syncing} variant="outline" className="gap-1.5">
+            {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            {syncing ? "Syncing..." : "Sync Now"}
+          </Button>
+          <Button onClick={handleExport} disabled={emails.length === 0} className="gap-1.5">
+            <Download className="h-4 w-4" /> Export CSV
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-4">

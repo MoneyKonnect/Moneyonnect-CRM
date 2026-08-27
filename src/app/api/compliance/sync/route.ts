@@ -7,6 +7,24 @@ const GMAIL_ADDRESS = "info@moneykonnect.in";
 const SYNC_START_DATE = "2022/01/01";
 const BATCH_SIZE = 100; // emails fetched per invocation — small enough to stay well within timeout
 
+// Per your instruction: keyword-guessed candidates get labeled directly into
+// your existing, human-curated labels — same ones the label-import route reads from.
+const COMPLAINT_LABEL_IDS = ["Label_880004551591226888", "Label_8855910926228474100"];
+
+async function applyGmailLabel(accessToken: string, messageId: string) {
+  await fetch(
+    `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}/modify`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ addLabelIds: [COMPLAINT_LABEL_IDS[0]] }), // "compaints" label
+    }
+  );
+}
+
 // Words that trigger a "needs review" suggestion. Kept as a flat, auditable
 // list — an auditor or advisor can see exactly why something got flagged,
 // no black-box scoring.
@@ -203,6 +221,14 @@ export async function POST(req: NextRequest) {
 
       if (!isAutoSuggested) { skipped++; continue; }
       flagged++;
+
+      // Apply the label in Gmail itself, per your instruction — surfaces the
+      // suggestion in your team's normal workflow, not just inside the CRM.
+      try {
+        await applyGmailLabel(accessToken, msg.id);
+      } catch (labelErr) {
+        console.error(`Failed to apply Gmail label to ${msg.id}:`, labelErr);
+      }
 
       await prisma.complianceEmail.create({
         data: {

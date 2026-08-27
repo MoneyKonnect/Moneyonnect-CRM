@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, Megaphone, TrendingUp,
   BarChart3, Building2, Zap, Sparkles, Bell, Settings,
   ChevronLeft, ChevronRight, Cake, IndianRupee,
-  ChevronDown, CalendarClock, ExternalLink, Ticket, FileText,
+  ChevronDown, CalendarClock, ExternalLink, Ticket, FileText, ShieldAlert,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -124,6 +124,7 @@ export function Sidebar({ counts = {} }: SidebarProps) {
         <NavItem item={{ href: "/notifications", label: "Notifications",     icon: Bell, countKey: "notifications" }} />
         <NavItem item={{ href: "/birthdays",     label: "Birthday Calendar", icon: Cake }} />
         <NavItem item={{ href: "/aum",           label: "AUM Dashboard",     icon: IndianRupee }} />
+        <NavItem item={{ href: "/compliance",    label: "Compliance",        icon: ShieldAlert }} />
         {!collapsed && <p className="text-2xs font-semibold text-muted-foreground uppercase tracking-wider px-3 py-1 mt-2">Workspace</p>}
         {collapsed && <div className="my-2 border-t border-border mx-1" />}
         <NavItem item={{ href: "/tickets",      label: "My Work",           icon: Ticket, countKey: "tickets" }} />

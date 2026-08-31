@@ -39,6 +39,22 @@ export async function getComplianceEmails(filters?: {
   }
 }
 
+async function refreshGmailAccessToken(refreshToken: string) {
+  const res = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: process.env.GOOGLE_GMAIL_CLIENT_ID!,
+      client_secret: process.env.GOOGLE_GMAIL_CLIENT_SECRET!,
+      refresh_token: refreshToken,
+      grant_type: "refresh_token",
+    }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error("Token refresh failed");
+  return data.access_token as string;
+}
+
 export async function updateComplianceEmailStatus(
   id: string,
   data: {
@@ -62,10 +78,35 @@ export async function updateComplianceEmailStatus(
       updateData.reviewedById = userId;
     }
 
-    await prisma.complianceEmail.update({
+    const updated = await prisma.complianceEmail.update({
       where: { id },
       data: updateData,
     });
+
+    // Only NOW — on human confirmation — actually write the Gmail label.
+    // This keeps the real, trusted COMPLAINT REGISTER label clean; it never
+    // gets AI guesses, only things a person has verified.
+    if (data.category === "CONFIRMED_COMPLAINT" || data.category === "CONFIRMED_QUERY") {
+      try {
+        const authToken = await prisma.gmailAuthToken.findUnique({
+          where: { email: "info@moneykonnect.in" },
+        });
+        if (authToken) {
+          const accessToken = await refreshGmailAccessToken(authToken.refreshToken);
+          await fetch(
+            `https://gmail.googleapis.com/gmail/v1/users/me/messages/${updated.gmailMessageId}/modify`,
+            {
+              method: "POST",
+              headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ addLabelIds: ["Label_8855910926228474100"] }),
+            }
+          );
+        }
+      } catch (labelErr) {
+        console.error("Gmail label apply on confirm failed:", labelErr);
+        // Don't fail the confirm action over a labeling hiccup.
+      }
+    }
 
     revalidatePath("/compliance");
     return { success: true };

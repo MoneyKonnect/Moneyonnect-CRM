@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: "code",
-    scope: "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/userinfo.email",
+    scope: "https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/userinfo.email",
     access_type: "offline",
     prompt: "consent",
   });

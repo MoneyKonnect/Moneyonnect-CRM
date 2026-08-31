@@ -172,13 +172,21 @@ export async function POST(req: NextRequest) {
       clients.filter((c) => c.email).map((c) => [c.email!.toLowerCase(), c.id])
     );
 
-    // Classify in batches of BATCH_SIZE via Claude
+    // Classify in batches of BATCH_SIZE via Claude — run all sub-batches
+    // in parallel instead of sequentially, since they're independent calls.
+    const chunks: typeof metaResults[] = [];
     for (let i = 0; i < metaResults.length; i += BATCH_SIZE) {
-      const chunk = metaResults.slice(i, i + BATCH_SIZE);
-      const classifications = await classifyBatch(
-        chunk.map((e) => ({ id: e.id, subject: e.subject, snippet: e.snippet, from: e.from }))
-      );
+      chunks.push(metaResults.slice(i, i + BATCH_SIZE));
+    }
+    const allClassifications = await Promise.all(
+      chunks.map((chunk) =>
+        classifyBatch(chunk.map((e) => ({ id: e.id, subject: e.subject, snippet: e.snippet, from: e.from })))
+          .then((result) => ({ chunk, result }))
+          .catch(() => ({ chunk, result: [] as { id: string; is_complaint: boolean; reason: string }[] }))
+      )
+    );
 
+    for (const { chunk, result: classifications } of allClassifications) {
       for (const cls of classifications) {
         if (!cls.is_complaint) continue;
         const email = chunk.find((e) => e.id === cls.id);

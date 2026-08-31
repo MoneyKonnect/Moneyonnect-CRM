@@ -167,3 +167,30 @@ export async function runComplianceSyncNow() {
     return { success: false, error: "Sync failed" };
   }
 }
+
+
+export async function bulkDismissByKeyword(keyword: string) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, count: 0 };
+    if (!keyword.trim()) return { success: false, count: 0 };
+
+    const result = await prisma.complianceEmail.updateMany({
+      where: {
+        category: "NEEDS_REVIEW",
+        OR: [
+          { subject: { contains: keyword, mode: "insensitive" } },
+          { fromName: { contains: keyword, mode: "insensitive" } },
+          { fromAddress: { contains: keyword, mode: "insensitive" } },
+        ],
+      },
+      data: { category: "DISMISSED", status: "RESOLVED" },
+    });
+
+    revalidatePath("/compliance");
+    return { success: true, count: result.count };
+  } catch (e) {
+    console.error("bulkDismissByKeyword error:", e);
+    return { success: false, count: 0 };
+  }
+}

@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn, formatDate } from "@/lib/utils";
-import { getComplianceEmails, updateComplianceEmailStatus, runComplianceSyncNow } from "@/actions/compliance";
+import { getComplianceEmails, updateComplianceEmailStatus, runComplianceSyncNow, bulkDismissByKeyword } from "@/actions/compliance";
 
 const CATEGORY_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   NEEDS_REVIEW: { label: "Needs Review", color: "text-amber-400", bg: "bg-amber-500/10" },
@@ -27,6 +27,8 @@ export function ComplianceClient() {
   const [resolutionDraft, setResolutionDraft] = useState("");
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [bulkKeyword, setBulkKeyword] = useState("");
+  const [bulkDismissing, setBulkDismissing] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -77,6 +79,20 @@ export function ComplianceClient() {
     } else {
       toast.error("Failed to update");
     }
+  };
+
+  const handleBulkDismiss = async () => {
+    if (!bulkKeyword.trim()) return;
+    setBulkDismissing(true);
+    const result = await bulkDismissByKeyword(bulkKeyword.trim());
+    if (result.success) {
+      toast.success(`Dismissed ${result.count} matching "${bulkKeyword}"`);
+      setBulkKeyword("");
+      load();
+    } else {
+      toast.error("Bulk dismiss failed");
+    }
+    setBulkDismissing(false);
   };
 
   const handleSyncNow = async () => {
@@ -176,6 +192,25 @@ export function ComplianceClient() {
           <option value="OPEN">Open</option>
           <option value="RESOLVED">Resolved</option>
         </select>
+      </div>
+
+      <div className="flex items-center gap-2 rounded-xl border border-dashed border-border p-3">
+        <span className="text-xs text-muted-foreground whitespace-nowrap">Bulk dismiss "Needs Review" items matching:</span>
+        <Input
+          placeholder="e.g. GST, ajay rajoriya, a sender name..."
+          value={bulkKeyword}
+          onChange={(e) => setBulkKeyword(e.target.value)}
+          className="h-8 text-sm"
+        />
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={handleBulkDismiss}
+          disabled={bulkDismissing || !bulkKeyword.trim()}
+          className="whitespace-nowrap"
+        >
+          {bulkDismissing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Dismiss All Matching"}
+        </Button>
       </div>
 
       <div className="rounded-xl border border-border bg-card overflow-hidden">

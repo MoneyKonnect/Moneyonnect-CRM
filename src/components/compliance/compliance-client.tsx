@@ -65,9 +65,14 @@ export function ComplianceClient() {
   };
 
   const handleCategoryChange = async (email: any, category: string) => {
-    const result = await updateComplianceEmailStatus(email.id, { category });
+    // Dismissing means "not a real issue" — close it out entirely rather
+    // than leaving it Open with no real action left to take on it.
+    const payload: any = { category };
+    if (category === "DISMISSED") payload.status = "RESOLVED";
+
+    const result = await updateComplianceEmailStatus(email.id, payload);
     if (result.success) {
-      toast.success("Updated");
+      toast.success(category === "DISMISSED" ? "Dismissed" : "Confirmed");
       load();
     } else {
       toast.error("Failed to update");
@@ -236,7 +241,7 @@ export function ComplianceClient() {
                           </Button>
                         </>
                       )}
-                      {email.status === "OPEN" && email.category !== "NEEDS_REVIEW" && (
+                      {email.status === "OPEN" && email.category !== "NEEDS_REVIEW" && email.category !== "DISMISSED" && (
                         <Button
                           size="sm"
                           className="h-7 text-xs bg-brand-500 hover:bg-brand-600 text-white"

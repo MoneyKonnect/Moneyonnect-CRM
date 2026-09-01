@@ -194,24 +194,7 @@ export function ComplianceClient() {
         </select>
       </div>
 
-      <div className="flex items-center gap-2 rounded-xl border border-dashed border-border p-3">
-        <span className="text-xs text-muted-foreground whitespace-nowrap">Bulk dismiss "Needs Review" items matching:</span>
-        <Input
-          placeholder="e.g. GST, ajay rajoriya, a sender name..."
-          value={bulkKeyword}
-          onChange={(e) => setBulkKeyword(e.target.value)}
-          className="h-8 text-sm"
-        />
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={handleBulkDismiss}
-          disabled={bulkDismissing || !bulkKeyword.trim()}
-          className="whitespace-nowrap"
-        >
-          {bulkDismissing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Dismiss All Matching"}
-        </Button>
-      </div>
+
 
       <div className="rounded-xl border border-border bg-card overflow-hidden">
         {loading ? (

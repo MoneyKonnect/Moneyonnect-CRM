@@ -37,6 +37,15 @@ const SIGNAL_KEYWORDS = [
   "mistake", "discrepancy", "wrong amount", "compensation",
   "mis-sold", "misled", "fraud", "cheated", "legal action",
   "ombudsman", "consumer forum",
+  "does not belong", "doesn't belong", "not mine", "someone else",
+  "wrong report", "wrong statement", "wrong details", "wrong client",
+  "please rectify", "please correct", "please clarify", "please check and clarify",
+  "kindly clarify", "does not match", "doesn't match", "mismatch",
+  "unable to", "not received", "still pending", "still waiting",
+  "confusing", "not clear", "please explain", "request to review",
+  "rejected", "failed", "delay in", "delayed", "not processed",
+  "incorrect", "error in", "duplicate", "missing", "again and again",
+  "third time", "repeatedly", "very disappointed", "extremely unhappy",
 ];
 
 // Layer 2: must ALSO relate to an actual financial/transaction context —
@@ -47,6 +56,10 @@ const FINANCE_CONTEXT_KEYWORDS = [
   "sip", "folio", "nomination", "nominee", "statement", "investment",
   "withdrawal", "portfolio", "fund", "account", "demat", "units",
   "nav", "switch", "purchase", "cheque", "bank details", "pan",
+  "capital gain", "dividend", "mutual fund", "aum", "sip installment",
+  "systematic", "lumpsum", "folio number", "unit holder", "scheme name",
+  "consolidated statement", "cas", "e-cas", "maturity", "insurance policy",
+  "policy number", "premium",
 ];
 
 async function refreshAccessToken(refreshToken: string) {

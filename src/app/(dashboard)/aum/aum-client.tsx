@@ -20,6 +20,24 @@ function formatCr(n: number): string {
   return `₹${n.toLocaleString("en-IN")}`;
 }
 
+interface SyncSummary {
+  newClients: number;
+  updatedClients: number;
+  minorsPromoted: number;
+  needsReviewCount: number;
+  totalAumSynced: number;
+  rowsProcessed: number;
+  rowsSkippedJunk: number;
+  filesProcessed: { name: string; type: string; rowCount: number }[];
+}
+
+interface SyncResult {
+  success: boolean;
+  message?: string;
+  error?: string;
+  summary?: SyncSummary;
+}
+
 interface AUMClientProps {
   totalAUM: number;
   clientCount: number;
@@ -32,7 +50,7 @@ export default function AUMClient({ totalAUM, clientCount, categoryBreakdown, to
   const router = useRouter();
   const [files, setFiles] = useState<File[]>([]);
   const [syncing, setSyncing] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<SyncResult | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -55,14 +73,23 @@ export default function AUMClient({ totalAUM, clientCount, categoryBreakdown, to
     files.forEach(f => formData.append("files", f));
     try {
       const res = await fetch("/api/sync/aum", { method: "POST", body: formData });
-      const data = await res.json();
-      if (!res.ok) { toast.error(data.error || "Sync failed"); return; }
+      const data: SyncResult = await res.json();
+      if (!res.ok || !data.success) {
+        console.error("AUM sync failed:", data.error || data);
+        toast.error(data.error || "Sync failed");
+        setResult(data);
+        return;
+      }
       setResult(data);
-      toast.success(data.message);
+      toast.success(data.message || "Sync complete");
       router.refresh();
       setFiles([]);
-    } catch { toast.error("Sync failed"); }
-    finally { setSyncing(false); }
+    } catch (err) {
+      console.error("AUM sync request error:", err);
+      toast.error("Sync failed — check console for details");
+    } finally {
+      setSyncing(false);
+    }
   };
 
   const clientsWithAUM = categoryBreakdown.reduce((a, c) => a + c.count, 0);
@@ -157,31 +184,45 @@ export default function AUMClient({ totalAUM, clientCount, categoryBreakdown, to
               <div className={cn("rounded-xl p-4 space-y-3 border", result.success ? "bg-emerald-500/5 border-emerald-500/20" : "bg-danger/5 border-danger/20")}>
                 <div className="flex items-center gap-2">
                   {result.success ? <CheckCircle className="h-4 w-4 text-emerald-400" /> : <AlertCircle className="h-4 w-4 text-danger" />}
-                  <p className="text-sm font-medium text-foreground">{result.message}</p>
+                  <p className="text-sm font-medium text-foreground">{result.success ? result.message : (result.error || "Sync failed")}</p>
                 </div>
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="bg-background rounded-lg p-2">
-                    <p className="text-lg font-bold text-emerald-400">{result.updated}</p>
-                    <p className="text-2xs text-muted-foreground">Updated</p>
-                  </div>
-                  <div className="bg-background rounded-lg p-2">
-                    <p className="text-lg font-bold text-muted-foreground">{result.notFound}</p>
-                    <p className="text-2xs text-muted-foreground">Not found</p>
-                  </div>
-                  <div className="bg-background rounded-lg p-2">
-                    <p className="text-lg font-bold text-brand-400">{formatCr(result.totalAUM)}</p>
-                    <p className="text-2xs text-muted-foreground">Total AUM</p>
-                  </div>
-                </div>
-                {result.significantChanges?.length > 0 && (
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-1.5">Significant changes:</p>
-                    <div className="space-y-1 max-h-32 overflow-y-auto">
-                      {result.significantChanges.map((c: string, i: number) => (
-                        <p key={i} className="text-xs text-foreground">{c}</p>
-                      ))}
+
+                {result.summary && (
+                  <>
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div className="bg-background rounded-lg p-2">
+                        <p className="text-lg font-bold text-emerald-400">{result.summary.newClients}</p>
+                        <p className="text-2xs text-muted-foreground">New clients</p>
+                      </div>
+                      <div className="bg-background rounded-lg p-2">
+                        <p className="text-lg font-bold text-blue-400">{result.summary.updatedClients}</p>
+                        <p className="text-2xs text-muted-foreground">Updated</p>
+                      </div>
+                      <div className="bg-background rounded-lg p-2">
+                        <p className="text-lg font-bold text-brand-400">{formatCr(result.summary.totalAumSynced)}</p>
+                        <p className="text-2xs text-muted-foreground">Total AUM synced</p>
+                      </div>
+                      <div className="bg-background rounded-lg p-2">
+                        <p className="text-lg font-bold text-violet-400">{result.summary.minorsPromoted}</p>
+                        <p className="text-2xs text-muted-foreground">Minors promoted</p>
+                      </div>
+                      <div className="bg-background rounded-lg p-2">
+                        <p className="text-lg font-bold text-amber-400">{result.summary.needsReviewCount}</p>
+                        <p className="text-2xs text-muted-foreground">Needs review</p>
+                      </div>
+                      <div className="bg-background rounded-lg p-2">
+                        <p className="text-lg font-bold text-muted-foreground">{result.summary.rowsSkippedJunk}</p>
+                        <p className="text-2xs text-muted-foreground">Skipped (junk)</p>
+                      </div>
                     </div>
-                  </div>
+                    {result.summary.filesProcessed?.length > 0 && (
+                      <div className="pt-1">
+                        <p className="text-2xs text-muted-foreground">
+                          {result.summary.filesProcessed.map(f => `${f.type} (${f.rowCount} rows)`).join(" · ")}
+                        </p>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             )}

@@ -1,5 +1,4 @@
 // src/lib/identity/types.ts
-
 export type MatchSource =
   | "PAN"
   | "GUARD_PAN"
@@ -10,12 +9,11 @@ export type MatchSource =
   | "FOLIO"
   | "MANUAL"
   | "PROMOTED_FROM_MINOR";
-
 export interface RawSyncRow {
   // raw values straight from CSV (CAMS or KFintech), already mapped to common field names
   name: string;
   pan: string | null;
-  guardianPan: string | null; // CAMS GUARD_PAN, null for KFintech
+  guardianPan: string | null; // KFintech GUARD_PAN column only. CAMS AUM export has no guardian-PAN field — always null for CAMS rows.
   email: string | null;
   mobile: string | null;
   address1: string | null;
@@ -26,7 +24,6 @@ export interface RawSyncRow {
   aum: number;
   holdingNature: string | null;
 }
-
 export interface ResolutionResult {
   investorKey: string;
   resolvedGuardianPan: string | null;

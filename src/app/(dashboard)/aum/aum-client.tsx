@@ -21,14 +21,16 @@ function formatCr(n: number): string {
 }
 
 interface SyncSummary {
-  newClients: number;
-  updatedClients: number;
-  minorsPromoted: number;
-  needsReviewCount: number;
+  foliosCreated: number;
+  foliosUpdated: number;
+  clientsMatched: number;
+  clientsNotFound: number;
+  clientsAumUpdated: number;
   totalAumSynced: number;
   rowsProcessed: number;
-  rowsSkippedJunk: number;
+  rowsSkipped: number;
   filesProcessed: { name: string; type: string; rowCount: number }[];
+  significantChanges: string[];
 }
 
 interface SyncResult {
@@ -191,36 +193,50 @@ export default function AUMClient({ totalAUM, clientCount, categoryBreakdown, to
                   <>
                     <div className="grid grid-cols-3 gap-2 text-center">
                       <div className="bg-background rounded-lg p-2">
-                        <p className="text-lg font-bold text-emerald-400">{result.summary.newClients}</p>
-                        <p className="text-2xs text-muted-foreground">New clients</p>
+                        <p className="text-lg font-bold text-emerald-400">{result.summary.foliosCreated}</p>
+                        <p className="text-2xs text-muted-foreground">New folios</p>
                       </div>
                       <div className="bg-background rounded-lg p-2">
-                        <p className="text-lg font-bold text-blue-400">{result.summary.updatedClients}</p>
-                        <p className="text-2xs text-muted-foreground">Updated</p>
+                        <p className="text-lg font-bold text-blue-400">{result.summary.foliosUpdated}</p>
+                        <p className="text-2xs text-muted-foreground">Updated folios</p>
                       </div>
                       <div className="bg-background rounded-lg p-2">
                         <p className="text-lg font-bold text-brand-400">{formatCr(result.summary.totalAumSynced)}</p>
                         <p className="text-2xs text-muted-foreground">Total AUM synced</p>
                       </div>
                       <div className="bg-background rounded-lg p-2">
-                        <p className="text-lg font-bold text-violet-400">{result.summary.minorsPromoted}</p>
-                        <p className="text-2xs text-muted-foreground">Minors promoted</p>
+                        <p className="text-lg font-bold text-violet-400">{result.summary.clientsMatched}</p>
+                        <p className="text-2xs text-muted-foreground">Clients matched</p>
                       </div>
                       <div className="bg-background rounded-lg p-2">
-                        <p className="text-lg font-bold text-amber-400">{result.summary.needsReviewCount}</p>
-                        <p className="text-2xs text-muted-foreground">Needs review</p>
+                        <p className="text-lg font-bold text-amber-400">{result.summary.clientsNotFound}</p>
+                        <p className="text-2xs text-muted-foreground">PAN not found</p>
                       </div>
                       <div className="bg-background rounded-lg p-2">
-                        <p className="text-lg font-bold text-muted-foreground">{result.summary.rowsSkippedJunk}</p>
-                        <p className="text-2xs text-muted-foreground">Skipped (junk)</p>
+                        <p className="text-lg font-bold text-muted-foreground">{result.summary.rowsSkipped}</p>
+                        <p className="text-2xs text-muted-foreground">Skipped rows</p>
                       </div>
                     </div>
-                    {result.summary.filesProcessed?.length > 0 && (
-                      <div className="pt-1">
-                        <p className="text-2xs text-muted-foreground">
-                          {result.summary.filesProcessed.map(f => `${f.type} (${f.rowCount} rows)`).join(" · ")}
-                        </p>
+
+                    <p className="text-2xs text-muted-foreground">
+                      {result.summary.clientsAumUpdated} client AUM total{result.summary.clientsAumUpdated === 1 ? "" : "s"} recalculated on the dashboard
+                    </p>
+
+                    {result.summary.significantChanges?.length > 0 && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground mb-1.5">Significant changes (&gt;20%):</p>
+                        <div className="space-y-1 max-h-32 overflow-y-auto">
+                          {result.summary.significantChanges.map((c: string, i: number) => (
+                            <p key={i} className="text-xs text-foreground">{c}</p>
+                          ))}
+                        </div>
                       </div>
+                    )}
+
+                    {result.summary.filesProcessed?.length > 0 && (
+                      <p className="text-2xs text-muted-foreground pt-1">
+                        {result.summary.filesProcessed.map(f => `${f.type} (${f.rowCount} rows)`).join(" · ")}
+                      </p>
                     )}
                   </>
                 )}

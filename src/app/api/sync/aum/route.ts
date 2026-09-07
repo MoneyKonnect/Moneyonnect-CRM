@@ -1,22 +1,25 @@
 // src/app/api/sync/aum/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
-import { matchClient } from "@/lib/identity/matchClient";
-import { normalizeName } from "@/lib/identity/normalizeName";
-import { RawSyncRow } from "@/lib/identity/types";
-import { parseSyncFile } from "@/lib/identity/parseSyncFile";
+import { parseSyncFile, ParsedFolioRow } from "@/lib/identity/parseSyncFile";
 
 const prisma = new PrismaClient();
 
 interface SyncSummary {
-  newClients: number;
-  updatedClients: number;
-  minorsPromoted: number;
-  needsReviewCount: number;
+  foliosCreated: number;
+  foliosUpdated: number;
+  clientsMatched: number;
+  clientsNotFound: number;
+  clientsAumUpdated: number;
   totalAumSynced: number;
   rowsProcessed: number;
-  rowsSkippedJunk: number;
+  rowsSkipped: number;
   filesProcessed: { name: string; type: string; rowCount: number }[];
+  significantChanges: string[];
+}
+
+function folioKey(pan: string, folioNo: string | null, schemeName: string): string {
+  return `${pan}|${folioNo ?? ""}|${schemeName}`;
 }
 
 export async function POST(req: NextRequest) {
@@ -27,7 +30,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, error: "No files uploaded" }, { status: 400 });
   }
 
-  const allRows: RawSyncRow[] = [];
+  const allRows: ParsedFolioRow[] = [];
   const filesProcessed: { name: string; type: string; rowCount: number }[] = [];
   let parseSkipped = 0;
 
@@ -48,68 +51,122 @@ export async function POST(req: NextRequest) {
   }
 
   const summary: SyncSummary = {
-    newClients: 0,
-    updatedClients: 0,
-    minorsPromoted: 0,
-    needsReviewCount: 0,
+    foliosCreated: 0,
+    foliosUpdated: 0,
+    clientsMatched: 0,
+    clientsNotFound: 0,
+    clientsAumUpdated: 0,
     totalAumSynced: 0,
     rowsProcessed: 0,
-    rowsSkippedJunk: parseSkipped,
+    rowsSkipped: parseSkipped,
     filesProcessed,
+    significantChanges: [],
   };
 
+  if (allRows.length === 0) {
+    return NextResponse.json({
+      success: true,
+      message: "No valid rows found in the uploaded files",
+      summary,
+    });
+  }
+
+  const distinctPans = Array.from(new Set(allRows.map((r) => r.pan)));
+
+  const clients = await prisma.client.findMany({
+    where: { pan: { in: distinctPans } },
+    select: { id: true, pan: true },
+  });
+  const clientByPan = new Map<string, string>();
+  for (const c of clients) {
+    if (c.pan) clientByPan.set(c.pan, c.id);
+  }
+
+  const existingFolios = await prisma.folio.findMany({
+    where: { pan: { in: distinctPans } },
+    select: { id: true, pan: true, folioNo: true, schemeName: true, aum: true },
+  });
+  const folioByKey = new Map<string, { id: string; aum: number }>();
+  for (const f of existingFolios) {
+    folioByKey.set(folioKey(f.pan, f.folioNo, f.schemeName), { id: f.id, aum: Number(f.aum) });
+  }
+
+  const matchedPans = new Set<string>();
+  const notFoundPans = new Set<string>();
+  const touchedClientIds = new Set<string>();
+
   for (const row of allRows) {
-    const hasAnyIdentity =
-      row.pan || row.guardianPan || row.email || row.mobile || row.folioNumber;
-    if ((row.aum === null || row.aum === undefined || isNaN(row.aum)) && !hasAnyIdentity) {
-      summary.rowsSkippedJunk++;
-      continue;
+    const clientId = clientByPan.get(row.pan) ?? null;
+    if (clientId) { matchedPans.add(row.pan); touchedClientIds.add(clientId); }
+    else notFoundPans.add(row.pan);
+
+    const key = folioKey(row.pan, row.folioNo, row.schemeName);
+    const existing = folioByKey.get(key);
+
+    if (existing) {
+      await prisma.folio.update({
+        where: { id: existing.id },
+        data: {
+          fundHouse: row.fundHouse,
+          units: row.units,
+          aum: row.aum,
+          source: row.source,
+          clientId,
+          updatedAt: new Date(),
+        },
+      });
+      summary.foliosUpdated++;
+
+      if (existing.aum > 10000 && Math.abs(row.aum - existing.aum) / existing.aum > 0.2) {
+        const name = row.investorName || row.pan;
+        summary.significantChanges.push(
+          `${name}: ₹${existing.aum.toLocaleString("en-IN")} → ₹${row.aum.toLocaleString("en-IN")} (${row.schemeName})`
+        );
+      }
+      folioByKey.set(key, { id: existing.id, aum: row.aum });
+    } else {
+      const created = await prisma.folio.create({
+        data: {
+          pan: row.pan,
+          folioNo: row.folioNo,
+          schemeName: row.schemeName,
+          fundHouse: row.fundHouse,
+          units: row.units,
+          aum: row.aum,
+          source: row.source,
+          clientId,
+        },
+      });
+      summary.foliosCreated++;
+      folioByKey.set(key, { id: created.id, aum: row.aum });
     }
 
-    const aum = row.aum || 0;
-    const normName = normalizeName(row.name);
-    const { client, created, promoted } = await matchClient(prisma, row);
-
-    if (created) summary.newClients++;
-    else summary.updatedClients++;
-    if (promoted) summary.minorsPromoted++;
-    if (client.needsReview) summary.needsReviewCount++;
-
-    await prisma.folio.upsert({
-      where: {
-        amcCode_folioNumber: { amcCode: row.amcCode, folioNumber: row.folioNumber },
-      },
-      update: {
-        currentAum: aum,
-        holderName: row.name,
-        normalizedName: normName,
-        holdingNature: row.holdingNature,
-        guardianPan: client.guardianPan ?? undefined,
-        investorKey: client.investorKey,
-        clientId: client.id,
-        lastSyncedAt: new Date(),
-      },
-      create: {
-        amcCode: row.amcCode,
-        folioNumber: row.folioNumber,
-        currentAum: aum,
-        holderName: row.name,
-        normalizedName: normName,
-        holdingNature: row.holdingNature,
-        guardianPan: client.guardianPan ?? null,
-        investorKey: client.investorKey,
-        clientId: client.id,
-        lastSyncedAt: new Date(),
-      },
-    });
-
-    summary.totalAumSynced += aum;
+    summary.totalAumSynced += row.aum;
     summary.rowsProcessed++;
+  }
+
+  summary.clientsMatched = matchedPans.size;
+  summary.clientsNotFound = notFoundPans.size;
+
+  if (touchedClientIds.size > 0) {
+    const sums = await prisma.folio.groupBy({
+      by: ["clientId"],
+      where: { clientId: { in: Array.from(touchedClientIds) } },
+      _sum: { aum: true },
+    });
+    for (const s of sums) {
+      if (!s.clientId) continue;
+      await prisma.client.update({
+        where: { id: s.clientId },
+        data: { aum: s._sum.aum ?? 0 },
+      });
+      summary.clientsAumUpdated++;
+    }
   }
 
   return NextResponse.json({
     success: true,
-    message: `Synced ${summary.rowsProcessed} rows across ${files.length} file${files.length > 1 ? "s" : ""}`,
+    message: `Synced ${summary.rowsProcessed} folios (${summary.foliosCreated} new, ${summary.foliosUpdated} updated) across ${files.length} file${files.length > 1 ? "s" : ""}`,
     summary,
   });
 }

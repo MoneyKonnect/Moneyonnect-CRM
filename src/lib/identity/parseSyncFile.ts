@@ -1,26 +1,35 @@
 // src/lib/identity/parseSyncFile.ts
 //
-// Parses raw CAMS or KFintech AUM-export CSV text into RawSyncRow[].
-// Auto-detects file type from the header row so either file can be
-// dropped in any order/combination.
+// Parses raw CAMS or KFintech AUM-export CSV text into rows matching the
+// REAL Folio schema (pan, folioNo, schemeName, fundHouse, units, aum, source).
+// Auto-detects file type from the header row.
 //
-// KFintech quirk: fields are individually wrapped in single quotes
-// (numeric fields left bare) — NOT the RFC4180 double-quote convention.
-// CAMS: standard RFC4180 CSV (double-quote qualified, "" escapes a
-// literal quote). Both parsed with small dependency-free parsers below
-// rather than adding a new package.
+// KFintech: fields individually single-quote wrapped (numeric fields bare).
+// CAMS: standard RFC4180 CSV (double-quote qualified).
 //
-// NOTE: guardianPan is a KFintech-only field (GUARD_PAN column). The
-// CAMS AUM export has no guardian-PAN column at all — always null for
-// CAMS rows.
-
-import { RawSyncRow } from "./types";
+// NOTE: Folio.pan is required (non-nullable). For KFintech rows with no
+// PAN_NO (typically minors), we fall back to GUARD_PAN so the row can
+// still be saved — pragmatic given the DB has no minor/guardian schema
+// today. CAMS has no guardian-PAN column at all, so CAMS rows with no
+// PAN are skipped (counted in `skipped`). Rows with no scheme name are
+// also skipped since schemeName is required on Folio too.
 
 export type SyncFileType = "KFINTECH" | "CAMS" | "UNKNOWN";
 
+export interface ParsedFolioRow {
+  pan: string;
+  folioNo: string | null;
+  schemeName: string;
+  fundHouse: string | null;
+  units: number | null;
+  aum: number;
+  source: "CAMS" | "KFINTECH";
+  investorName: string; // not persisted — used only for response messages
+}
+
 export interface ParsedFileResult {
   type: SyncFileType;
-  rows: RawSyncRow[];
+  rows: ParsedFolioRow[];
   skipped: number;
 }
 
@@ -100,39 +109,43 @@ function toValueOrNull(v: string | undefined): string | null {
   return t.length ? t : null;
 }
 
-function mapKfintechRow(r: Record<string, string>): RawSyncRow {
+function mapKfintechRow(r: Record<string, string>): ParsedFolioRow | null {
+  const pan = toValueOrNull(r["PAN_NO"]) ?? toValueOrNull(r["GUARD_PAN"]);
+  const schemeName = (r["SCH_NAME"] || "").trim();
+  if (!pan || !schemeName) return null;
+
+  const units = parseFloat(r["CLOS_BAL"]);
   const aum = parseFloat(r["RUPEE_BAL"]);
+
   return {
-    name: (r["INV_NAME"] || "").trim(),
-    pan: toValueOrNull(r["PAN_NO"]),
-    guardianPan: toValueOrNull(r["GUARD_PAN"]),
-    email: toValueOrNull(r["EMAIL"]),
-    mobile: toValueOrNull(r["PHONE_RES"]) ?? toValueOrNull(r["PHONE_OFF"]),
-    address1: toValueOrNull(r["ADDRESS1"]),
-    pincode: toValueOrNull(r["PINCODE"]),
-    ckyc: toValueOrNull(r["FH_CKYC_NO"]),
-    amcCode: (r["AMC_CODE"] || "").trim(),
-    folioNumber: (r["FOLIOCHK"] || "").trim(),
+    pan,
+    folioNo: toValueOrNull(r["FOLIOCHK"]),
+    schemeName,
+    fundHouse: toValueOrNull(r["AMC_CODE"]),
+    units: isNaN(units) ? null : units,
     aum: isNaN(aum) ? 0 : aum,
-    holdingNature: toValueOrNull(r["HOLDING_NATURE"]),
+    source: "KFINTECH",
+    investorName: (r["INV_NAME"] || "").trim(),
   };
 }
 
-function mapCamsRow(r: Record<string, string>): RawSyncRow {
+function mapCamsRow(r: Record<string, string>): ParsedFolioRow | null {
+  const pan = toValueOrNull(r["PAN"]);
+  const schemeName = (r["Fund Description"] || "").trim();
+  if (!pan || !schemeName) return null;
+
+  const units = parseFloat(r["Balance"]);
   const aum = parseFloat(r["AUM"]);
+
   return {
-    name: (r["Investor Name"] || "").trim(),
-    pan: toValueOrNull(r["PAN"]),
-    guardianPan: null,
-    email: toValueOrNull(r["Email"]),
-    mobile: toValueOrNull(r["Mobile No"]),
-    address1: toValueOrNull(r["Address #1"]),
-    pincode: toValueOrNull(r["Pincode"]),
-    ckyc: null,
-    amcCode: (r["Fund"] || "").trim(),
-    folioNumber: (r["Folio Number"] || "").trim(),
+    pan,
+    folioNo: toValueOrNull(r["Folio Number"]),
+    schemeName,
+    fundHouse: toValueOrNull(r["Fund"]),
+    units: isNaN(units) ? null : units,
     aum: isNaN(aum) ? 0 : aum,
-    holdingNature: toValueOrNull(r["Hold Mode"]),
+    source: "CAMS",
+    investorName: (r["Investor Name"] || "").trim(),
   };
 }
 
@@ -141,10 +154,15 @@ export function parseSyncFile(text: string): ParsedFileResult {
   if (type === "UNKNOWN") return { type, rows: [], skipped: 0 };
 
   const records = type === "KFINTECH" ? parseKfintechTable(text) : parseRfc4180(text);
-  const mapped = records.map(type === "KFINTECH" ? mapKfintechRow : mapCamsRow);
+  const mapFn = type === "KFINTECH" ? mapKfintechRow : mapCamsRow;
 
-  const rows = mapped.filter((row) => row.folioNumber.length > 0);
-  const skipped = mapped.length - rows.length;
+  const rows: ParsedFolioRow[] = [];
+  let skipped = 0;
+  for (const r of records) {
+    const mapped = mapFn(r);
+    if (mapped) rows.push(mapped);
+    else skipped++;
+  }
 
   return { type, rows, skipped };
 }

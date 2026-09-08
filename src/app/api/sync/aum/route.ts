@@ -23,6 +23,8 @@ function folioKey(pan: string, folioNo: string | null, schemeName: string): stri
   return `${pan}|${folioNo ?? ""}|${schemeName}`;
 }
 
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest) {
   const formData = await req.formData();
   const files = formData.getAll("files") as File[];
@@ -97,58 +99,62 @@ export async function POST(req: NextRequest) {
   const notFoundPans = new Set<string>();
   const touchedClientIds = new Set<string>();
 
-  for (const row of allRows) {
-    const clientId = clientByPan.get(row.pan) ?? null;
-    if (clientId) { matchedPans.add(row.pan); touchedClientIds.add(clientId); }
-    else notFoundPans.add(row.pan);
+  const CONCURRENCY = 25;
+  for (let i = 0; i < allRows.length; i += CONCURRENCY) {
+    const chunk = allRows.slice(i, i + CONCURRENCY);
+    await Promise.all(chunk.map(async (row) => {
+      const clientId = clientByPan.get(row.pan) ?? null;
+      if (clientId) { matchedPans.add(row.pan); touchedClientIds.add(clientId); }
+      else notFoundPans.add(row.pan);
 
-    const key = folioKey(row.pan, row.folioNo, row.schemeName);
-    const existing = folioByKey.get(key);
+      const key = folioKey(row.pan, row.folioNo, row.schemeName);
+      const existing = folioByKey.get(key);
 
-    if (existing) {
-      await prisma.folio.update({
-        where: { id: existing.id },
-        data: {
-          fundHouse: row.fundHouse,
-          units: row.units,
-          aum: row.aum,
-          source: row.source,
-          clientId,
-          updatedAt: new Date(),
-          holderName: row.investorName || row.pan,
-          normalizedName: normalizeName(row.investorName) || row.pan,
-        },
-      });
-      summary.foliosUpdated++;
+      if (existing) {
+        await prisma.folio.update({
+          where: { id: existing.id },
+          data: {
+            fundHouse: row.fundHouse,
+            units: row.units,
+            aum: row.aum,
+            source: row.source,
+            clientId,
+            updatedAt: new Date(),
+            holderName: row.investorName || row.pan,
+            normalizedName: normalizeName(row.investorName) || row.pan,
+          },
+        });
+        summary.foliosUpdated++;
 
-      if (existing.aum > 10000 && Math.abs(row.aum - existing.aum) / existing.aum > 0.2) {
-        const name = row.investorName || row.pan;
-        summary.significantChanges.push(
-          `${name}: ₹${existing.aum.toLocaleString("en-IN")} → ₹${row.aum.toLocaleString("en-IN")} (${row.schemeName})`
-        );
+        if (existing.aum > 10000 && Math.abs(row.aum - existing.aum) / existing.aum > 0.2) {
+          const name = row.investorName || row.pan;
+          summary.significantChanges.push(
+            `${name}: ₹${existing.aum.toLocaleString("en-IN")} → ₹${row.aum.toLocaleString("en-IN")} (${row.schemeName})`
+          );
+        }
+        folioByKey.set(key, { id: existing.id, aum: row.aum });
+      } else {
+        const created = await prisma.folio.create({
+          data: {
+            pan: row.pan,
+            folioNo: row.folioNo,
+            schemeName: row.schemeName,
+            fundHouse: row.fundHouse,
+            units: row.units,
+            aum: row.aum,
+            source: row.source,
+            clientId,
+            holderName: row.investorName || row.pan,
+            normalizedName: normalizeName(row.investorName) || row.pan,
+          },
+        });
+        summary.foliosCreated++;
+        folioByKey.set(key, { id: created.id, aum: row.aum });
       }
-      folioByKey.set(key, { id: existing.id, aum: row.aum });
-    } else {
-      const created = await prisma.folio.create({
-        data: {
-          pan: row.pan,
-          folioNo: row.folioNo,
-          schemeName: row.schemeName,
-          fundHouse: row.fundHouse,
-          units: row.units,
-          aum: row.aum,
-          source: row.source,
-          clientId,
-          holderName: row.investorName || row.pan,
-          normalizedName: normalizeName(row.investorName) || row.pan,
-        },
-      });
-      summary.foliosCreated++;
-      folioByKey.set(key, { id: created.id, aum: row.aum });
-    }
 
-    summary.totalAumSynced += row.aum;
-    summary.rowsProcessed++;
+      summary.totalAumSynced += row.aum;
+      summary.rowsProcessed++;
+    }));
   }
 
   summary.clientsMatched = matchedPans.size;

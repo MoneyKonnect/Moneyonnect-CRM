@@ -78,23 +78,28 @@ async function getClients(userId: string, params: Awaited<ClientsPageProps["sear
     baseWhere.sourceLeadId = null;
   }
 
-  const [clients, total, newCount, convertedCount, existingCount] = await Promise.all([
-    db.client.findMany({
-      where: baseWhere,
-      orderBy: { createdAt: "desc" },
-      skip,
-      take: pageSize,
-      include: {
-        tags: { include: { tag: true } },
-        residency: { select: { residencyType: true } },
-        _count: { select: { interactions: true, tasks: true, documents: true } },
-      },
-    }),
-    db.client.count({ where: baseWhere }),
-    db.client.count({ where: { deletedAt: null, createdAt: { gte: ninetyDaysAgo }, sourceLeadId: null } }),
-    db.client.count({ where: { deletedAt: null, sourceLeadId: { not: null } } }),
-    db.client.count({ where: { deletedAt: null, createdAt: { lt: ninetyDaysAgo }, sourceLeadId: null } }),
-  ]);
+  let clients: any[] = [], total = 0, newCount = 0, convertedCount = 0, existingCount = 0;
+  try {
+    [clients, total, newCount, convertedCount, existingCount] = await Promise.all([
+      db.client.findMany({
+        where: baseWhere,
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: pageSize,
+        include: {
+          tags: { include: { tag: true } },
+          residency: { select: { residencyType: true } },
+          _count: { select: { interactions: true, tasks: true, documents: true } },
+        },
+      }),
+      db.client.count({ where: baseWhere }),
+      db.client.count({ where: { deletedAt: null, createdAt: { gte: ninetyDaysAgo }, sourceLeadId: null } }),
+      db.client.count({ where: { deletedAt: null, sourceLeadId: { not: null } } }),
+      db.client.count({ where: { deletedAt: null, createdAt: { lt: ninetyDaysAgo }, sourceLeadId: null } }),
+    ]);
+  } catch (err: any) {
+    console.error("getClients DB error:", err?.message || err, err?.code, err?.meta, "params:", JSON.stringify(params));
+  }
 
   // Tag each client with type
   const clientsWithType = clients.map(c => ({ ...c, clientType: getClientType(c) }));

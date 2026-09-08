@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { parseSyncFile, ParsedFolioRow } from "@/lib/identity/parseSyncFile";
+import { normalizeName } from "@/lib/identity/normalizeName";
 
 const prisma = new PrismaClient();
 
@@ -114,6 +115,8 @@ export async function POST(req: NextRequest) {
           source: row.source,
           clientId,
           updatedAt: new Date(),
+          holderName: row.investorName || row.pan,
+          normalizedName: normalizeName(row.investorName) || row.pan,
         },
       });
       summary.foliosUpdated++;
@@ -136,6 +139,8 @@ export async function POST(req: NextRequest) {
           aum: row.aum,
           source: row.source,
           clientId,
+          holderName: row.investorName || row.pan,
+          normalizedName: normalizeName(row.investorName) || row.pan,
         },
       });
       summary.foliosCreated++;

@@ -906,16 +906,22 @@ model Ticket {
 // ─── Folios (Fund-wise Investment Breakdown) ──────────────────────────────────
 
 model Folio {
-  id         String   @id @default(cuid())
-  clientId   String?
-  pan        String
-  folioNo    String?
-  schemeName String
-  fundHouse  String?
-  units      Decimal? @db.Decimal(18, 4)
-  aum        Decimal  @default(0) @db.Decimal(18, 2)
-  source     String
-  updatedAt  DateTime @default(now())
+  id             String   @id @default(cuid())
+  clientId       String?
+  pan            String
+  folioNo        String?
+  schemeName     String
+  fundHouse      String?
+  units          Decimal? @db.Decimal(18, 4)
+  aum            Decimal  @default(0) @db.Decimal(18, 2)
+  source         String
+  updatedAt      DateTime @default(now())
+  holderName     String
+  normalizedName String
+  guardianName   String?
+  guardianPan    String?
+  holdingNature  String?
+  investorKey    String?
 
   client Client? @relation(fields: [clientId], references: [id], onDelete: Cascade)
 

@@ -71,6 +71,7 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  try {
   const distinctPans = Array.from(new Set(allRows.map((r) => r.pan)));
 
   const clients = await prisma.client.findMany({
@@ -169,4 +170,16 @@ export async function POST(req: NextRequest) {
     message: `Synced ${summary.rowsProcessed} folios (${summary.foliosCreated} new, ${summary.foliosUpdated} updated) across ${files.length} file${files.length > 1 ? "s" : ""}`,
     summary,
   });
+  } catch (err: any) {
+    console.error("AUM sync DB error:", err);
+    return NextResponse.json(
+      {
+        success: false,
+        error: err?.message || String(err),
+        code: err?.code || null,
+        meta: err?.meta || null,
+      },
+      { status: 500 }
+    );
+  }
 }

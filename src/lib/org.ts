@@ -6,6 +6,11 @@ import { db } from "@/lib/db";
  * records regardless of which user is recorded as the owner.
  */
 export async function getOrgUserIds(): Promise<string[]> {
-  const users = await db.user.findMany({ select: { id: true } });
-  return users.map((u) => u.id);
+  try {
+    const users = await db.user.findMany({ select: { id: true } });
+    return users.map((u) => u.id);
+  } catch (err: any) {
+    console.error("getOrgUserIds DB error:", err?.message || err, err?.code, err?.meta);
+    return [];
+  }
 }

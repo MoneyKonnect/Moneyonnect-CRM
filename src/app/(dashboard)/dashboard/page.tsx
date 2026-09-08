@@ -21,8 +21,13 @@ export default async function DashboardPage() {
   const next30 = new Date(today.getTime() + 30 * 86400000);
 
   // Get all org user IDs for shared data
-  const allUsers = await db.user.findMany({ select: { id: true } });
-  const allUserIds = allUsers.map((u) => u.id);
+  let allUserIds: string[] = [];
+  try {
+    const allUsers = await db.user.findMany({ select: { id: true } });
+    allUserIds = allUsers.map((u) => u.id);
+  } catch (err: any) {
+    console.error("Dashboard getOrgUserIds DB error:", err?.message || err, err?.code, err?.meta);
+  }
 
   let data: any = { totalClients: 0, activeLeads: 0, pendingTasks: 0, overdueTasks: 0, recentInteractions: [], leadsByStage: [], tasksDueToday: [], totalAum: 0, insights: [] };
 
